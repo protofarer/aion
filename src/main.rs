@@ -5,13 +5,13 @@ mod game;
 mod gui;
 mod systems;
 
-use std::time::Instant;
+use std::{env, time::Instant};
 
 use crate::game::Game;
 use error_iter::ErrorIter as _;
-use game::Dt;
+use game::{Dt, GetLoopState, LoopState};
 use gui::Framework;
-use log::error;
+use log::{error, info};
 use pixels::{Error, Pixels, SurfaceTexture};
 use winit::{
     dpi::LogicalSize,
@@ -62,39 +62,34 @@ fn init_gfx(
     Ok((pixels, framework))
 }
 
-fn main() -> Result<(), Error> {
-    let event_loop = EventLoop::new();
-    let window = init_window(&event_loop);
-    let (mut pixels, mut framework) = init_gfx(&event_loop, &window).unwrap();
-    let mut input = WinitInputHelper::new();
-
-    let mut game = Game::new().unwrap_or_else(|e| {
-        println!("{e}");
-        std::process::exit(1);
-    });
-    // game.setup();
-    // game.run();
-
+fn run(
+    event_loop: EventLoop<()>,
+    window: Window,
+    mut pixels: Pixels,
+    mut framework: Framework,
+    mut input: WinitInputHelper,
+    mut ctx: Context,
+    mut game: Game,
+) -> Result<(), Error> {
+    game.setup();
     let mut ms_prev_frame = Instant::now();
-    // Logger::dbg("Game loop running");
+    game.loop_controller.run();
+
     event_loop.run(move |event, _, control_flow| {
-        // Draw the current frame
-        // rm since egui
-        // if let Event::RedrawRequested(_) = event {
-        //     world.draw(pixels.frame_mut());
-        //     if let Err(err) = pixels.render() {
-        //         log_error("pixels.render", err);
-        //         *control_flow = ControlFlow::Exit;
-        //         return;
-        //     }
-        // }
-        // game.handle_tick(&ms_prev_frame);
+        game.handle_tick(&ms_prev_frame);
         ms_prev_frame = Instant::now();
 
         // Handle input events
         if input.update(&event) {
+            //         self.handle_tick(&ms_prev_frame);
+            //         ms_prev_frame = Instant::now();
+            //         self.handle_input();
+            // WINDOW EVENTS
             // Close events
-            if input.key_pressed(VirtualKeyCode::Escape) || input.close_requested() {
+            if input.close_requested()
+                || (*game.get_loopstate() == LoopState::Stopped
+                    && input.key_pressed(VirtualKeyCode::Escape))
+            {
                 *control_flow = ControlFlow::Exit;
                 return;
             }
@@ -113,43 +108,97 @@ fn main() -> Result<(), Error> {
                 }
                 framework.resize(size.width, size.height);
             }
+            game.process_input(&input);
 
             // Update internal state and request a redraw
-            // game.update();
             window.request_redraw();
         }
 
-        match event {
-            Event::WindowEvent { event, .. } => {
-                // Update egui inputs
-                framework.handle_event(&event);
+        match game.get_loopstate() {
+            LoopState::Running => {
+                //update
+                // game.update();
             }
-            // Draw the current frame
-            Event::RedrawRequested(_) => {
-                // Draw the world
-                game.draw(pixels.frame_mut());
+            LoopState::Exiting => {
+                *control_flow = ControlFlow::Exit;
+                // exit event loop
+            }
+            _ => {}
+        }
 
-                // Prepare egui
-                framework.prepare(&window);
-
-                // Render everything together
-                let render_result = pixels.render_with(|encoder, render_target, context| {
-                    // Render the world texture
-                    context.scaling_renderer.render(encoder, render_target);
-
-                    // Render egui
-                    framework.render(encoder, render_target, context);
-
-                    Ok(())
-                });
-
-                // Basic error handling
-                if let Err(err) = render_result {
-                    log_error("pixels.render", err);
-                    *control_flow = ControlFlow::Exit;
+        // RENDER
+        if *game.get_loopstate() != LoopState::Stopped {
+            match event {
+                Event::WindowEvent { event, .. } => {
+                    // Update egui inputs
+                    framework.handle_event(&event);
                 }
+                // Draw the current frame
+                Event::RedrawRequested(_) => {
+                    // Fill frame buffer
+                    if *game.get_loopstate() != LoopState::Stopped {
+                        game.draw(pixels.frame_mut());
+                    }
+
+                    // Prepare egui
+                    framework.prepare(&window);
+
+                    // Render everything together
+                    let render_result = pixels.render_with(|encoder, render_target, context| {
+                        // Render the world texture
+                        if *game.get_loopstate() != LoopState::Stopped {
+                            context.scaling_renderer.render(encoder, render_target);
+                        }
+
+                        // Render egui
+                        framework.render(encoder, render_target, context);
+
+                        Ok(())
+                    });
+
+                    // Basic error handling
+                    if let Err(err) = render_result {
+                        log_error("pixels.render", err);
+                        *control_flow = ControlFlow::Exit;
+                    }
+                }
+                _ => (),
             }
-            _ => (),
         }
     });
+}
+
+struct Context {
+    is_debug_on: bool,
+}
+impl Context {
+    pub fn new() -> Self {
+        Context { is_debug_on: false }
+    }
+}
+
+#[macro_export]
+macro_rules! dev {
+    ($($arg:tt)*) => {
+        log::debug!(target: "DEV", $($arg)*);
+    }
+}
+
+fn main() {
+    env::set_var("RUST_LOG", "DEV=debug");
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("debug"))
+        .target(env_logger::Target::Stdout)
+        .init();
+
+    let event_loop = EventLoop::new();
+    let window = init_window(&event_loop);
+    let (mut pixels, mut framework) = init_gfx(&event_loop, &window).unwrap();
+    let mut input = WinitInputHelper::new();
+
+    let mut ctx = Context::new();
+    let mut game = Game::new().unwrap_or_else(|e| {
+        println!("{e}");
+        std::process::exit(1);
+    });
+    run(event_loop, window, pixels, framework, input, ctx, game);
 }
