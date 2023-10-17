@@ -31,26 +31,27 @@ fn log_error<E: std::error::Error + 'static>(method_name: &str, err: E) {
     }
 }
 
-// Setup the context aka metadata for game
+fn init_window(event_loop: &EventLoop<()>) -> Window {
+    let size = winit::dpi::LogicalSize::new(WINDOW_WIDTH, WINDOW_HEIGHT);
+    winit::window::WindowBuilder::new()
+        .with_title("my_window")
+        .with_inner_size(size)
+        .with_min_inner_size(size)
+        .build(&event_loop)
+        .unwrap()
+}
 
-fn main() -> Result<(), Error> {
-    let event_loop = EventLoop::new();
-    let window = {
-        let size = winit::dpi::LogicalSize::new(1920.0, 1080.0);
-        winit::window::WindowBuilder::new()
-            .with_title("my_window")
-            .with_inner_size(size)
-            .with_min_inner_size(size)
-            .build(&event_loop)
-            .unwrap()
-    };
-    let (mut pixels, mut framework) = {
+fn init_gfx(
+    event_loop: &EventLoop<()>,
+    window: &Window,
+) -> Result<(Pixels, Framework), pixels::Error> {
+    let (pixels, framework) = {
         let window_size = window.inner_size();
         let scale_factor = window.scale_factor() as f32;
         let surface_texture = SurfaceTexture::new(window_size.width, window_size.height, &window);
         let pixels = Pixels::new(WINDOW_WIDTH, WINDOW_HEIGHT, surface_texture)?;
         let framework = Framework::new(
-            &event_loop,
+            event_loop,
             window_size.width,
             window_size.height,
             scale_factor,
@@ -58,6 +59,13 @@ fn main() -> Result<(), Error> {
         );
         (pixels, framework)
     };
+    Ok((pixels, framework))
+}
+
+fn main() -> Result<(), Error> {
+    let event_loop = EventLoop::new();
+    let window = init_window(&event_loop);
+    let (mut pixels, mut framework) = init_gfx(&event_loop, &window).unwrap();
     let mut input = WinitInputHelper::new();
 
     let mut game = Game::new().unwrap_or_else(|e| {
