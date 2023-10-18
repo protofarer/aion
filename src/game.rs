@@ -9,7 +9,9 @@ use winit::event::{Event, VirtualKeyCode};
 use winit::window::Window;
 use winit_input_helper::WinitInputHelper;
 
+use crate::draw::{draw_line, draw_pixel};
 use crate::gui::Framework;
+use crate::pixel::Color;
 use crate::{dev, game, log_error, WINDOW_HEIGHT, WINDOW_WIDTH}; // little function in main.rs
 use legion::*;
 use nalgebra_glm::Vec2;
@@ -17,7 +19,6 @@ use pixels::{Pixels, SurfaceTexture};
 
 use super::systems::*;
 use crate::components::*;
-use crate::dsa::FixedSizeQueue;
 
 const FRAMERATE: u8 = 60;
 const FRAME_LIMIT_MS: f32 = 1000.0 / FRAMERATE as f32;
@@ -42,8 +43,8 @@ impl std::error::Error for InitError {}
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Dt(pub f32);
 pub struct WindowDims {
-    pub w: u32,
-    pub h: u32,
+    pub w: f32,
+    pub h: f32,
 }
 
 #[derive(PartialEq, Eq, Hash)] // ? is Eq needed? what's it do?
@@ -101,8 +102,6 @@ pub struct Game {
     world: World,
     update_schedule: Schedule,
     resources: Resources,
-    fps: f32,
-    fps_queue: FixedSizeQueue,
     key_states: HashMap<VirtualKeyCode, Option<ButtonState>>,
 }
 
@@ -146,8 +145,6 @@ impl Game {
 
         Ok(Self {
             loop_controller,
-            fps: 0.0,
-            fps_queue: FixedSizeQueue::new(60),
             is_debug_on: false,
             world,
             update_schedule,
@@ -180,37 +177,37 @@ impl Game {
         // self.handle_key_up(keys_down);
     }
 
-    pub fn handle_tick(&mut self, ms_prev_frame: &Instant) {
-        let time_to_wait: f32 =
-            FRAME_LIMIT_MS - Instant::now().duration_since(*ms_prev_frame).as_millis() as f32;
+    // pub fn handle_tick(&mut self, ms_prev_frame: &Instant) {
+    //     let time_to_wait: f32 =
+    //         FRAME_LIMIT_MS - Instant::now().duration_since(*ms_prev_frame).as_millis() as f32;
 
-        // fixed frame rate: if below threshold MILLISECS_PER_FRAME then sleep
-        if time_to_wait > 0.0 && time_to_wait <= FRAME_LIMIT_MS {
-            let sleep_duration = Duration::new(0, (time_to_wait * 1000000.0) as u32);
+    //     // fixed frame rate: if below threshold MILLISECS_PER_FRAME then sleep
+    //     if time_to_wait > 0.0 && time_to_wait <= FRAME_LIMIT_MS {
+    //         let sleep_duration = Duration::new(0, (time_to_wait * 1000000.0) as u32);
 
-            // * Sleeping for sleep_duration tends to actually sleep a little over by ~0.070 ms
-            // let presleep = Instant::now();
-            ::std::thread::sleep(sleep_duration);
-            // let sleep_dur = Instant::now().duration_since(presleep);
-            // println!("sleep_thread_duration(ms): {}", sleep_dur.as_micros() as f32 / 1000f32);
+    //         // * Sleeping for sleep_duration tends to actually sleep a little over by ~0.070 ms
+    //         // let presleep = Instant::now();
+    //         ::std::thread::sleep(sleep_duration);
+    //         // let sleep_dur = Instant::now().duration_since(presleep);
+    //         // println!("sleep_thread_duration(ms): {}", sleep_dur.as_micros() as f32 / 1000f32);
 
-            // println!("ttw: {} sleep_for: {}", time_to_wait, sleep_duration.as_micros() as f64 /1000.0);
-            if sleep_duration.as_millis() <= 2 {
-                // Logger::info(&format!(
-                // "Frames getting tight: sleeping {:?}ms",
-                // sleep_duration.as_millis()
-                // ));
-            }
-        }
+    //         // println!("ttw: {} sleep_for: {}", time_to_wait, sleep_duration.as_micros() as f64 /1000.0);
+    //         if sleep_duration.as_millis() <= 2 {
+    //             // Logger::info(&format!(
+    //             // "Frames getting tight: sleeping {:?}ms",
+    //             // sleep_duration.as_millis()
+    //             // ));
+    //         }
+    //     }
 
-        // aka elapsed seconds for a frame
-        let dt = Dt(Instant::now().duration_since(*ms_prev_frame).as_secs_f32());
-        self.resources.insert(dt.clone());
-        // println!("dt_in_handletick: {}_sec", dt.0);
+    //     // aka elapsed seconds for a frame
+    //     let dt = Dt(Instant::now().duration_since(*ms_prev_frame).as_secs_f32());
+    //     self.resources.insert(dt.clone());
+    //     // println!("dt_in_handletick: {}_sec", dt.0);
 
-        self.fps_queue.push(1_f32 / dt.0); // dt to millis is u128
-        self.fps = self.fps_queue.avg().unwrap_or(0f32);
-    }
+    //     self.fps_queue.push(1_f32 / dt.0); // dt to millis is u128
+    //     self.fps = self.fps_queue.avg().unwrap_or(0f32);
+    // }
 
     pub fn setup(&mut self) {
         dev!("SETUP start");
@@ -225,11 +222,11 @@ impl Game {
             RigidBody {
                 velocity: Vec2::new(0.0, 0.0),
             },
-            CollisionArea { w: 50, h: 50 },
-            // ColorBody {
-            //     primary: Color::RGB(0, 255, 0),
-            //     secondary: Color::RGB(0, 0, 0),
-            // },
+            CollisionArea { w: 50.0, h: 50.0 },
+            ColorBody {
+                primary: Color::RGB(0, 255, 0),
+                secondary: Color::RGB(0, 0, 0),
+            },
             RotationalInput {
                 turn_sign: None,
                 is_thrusting: false,
@@ -285,29 +282,25 @@ impl Game {
     }
 
     pub fn draw(&mut self, frame: &mut [u8]) {
-        // Clear current rendering target with drawing color
-        for (i, pixel) in frame.chunks_exact_mut(4).enumerate() {
-            pixel.copy_from_slice(&[0xFF, 0xFF, 0xFF, 0xff]);
+        let mut query = <(&Transform, &CollisionArea, &ColorBody)>::query();
+
+        for (transform, _collision_area, colorbody) in query.iter(&self.world) {
+            draw_ship(transform, colorbody, frame);
+            // self.canvas
+            //     .fill_rect(Rect::new(
+            //         transform.position.x as i32,
+            //         transform.position.y as i32,
+            //         collision_area.w,
+            //         collision_area.h,
+            //     ))
+            //     .expect("FAIL canvas.fill_rect");
         }
+        // for i in 25..500 {
+        //     draw_pixel(i, 300, Color::RGB(0, 255, 0), frame);
+        // }
+        // draw_pixel(800, 800, Color::RGB(0, 255, 0), frame);
+        // draw_line(25, 25, 500, 500, Color::RGB(255, 0, 0), frame);
     }
-
-    // pub fn render(&mut self) {
-    //     let mut query = <(&Transform, &CollisionArea, &ColorBody)>::query();
-
-    //     for (transform, _collision_area, colorbody) in query.iter(&self.world) {
-    //         self.canvas.set_draw_color(colorbody.primary);
-    //         draw_ship(transform, &mut self.canvas);
-    //         // self.canvas
-    //         //     .fill_rect(Rect::new(
-    //         //         transform.position.x as i32,
-    //         //         transform.position.y as i32,
-    //         //         collision_area.w,
-    //         //         collision_area.h,
-    //         //     ))
-    //         //     .expect("FAIL canvas.fill_rect");
-    //     }
-    //     self.canvas.present();
-    // }
 
     pub fn destroy(&self) {
         // Logger::dbg("Destroy game");
@@ -509,56 +502,89 @@ fn rotate_point(x: f32, y: f32, rotation: f32, cx: f32, cy: f32) -> (f32, f32) {
     (x_rotated + cx as f32, y_rotated + cy as f32)
 }
 
-// fn draw_ship(transform: &Transform, canvas: &mut Canvas<Window>) {
-//     // TODO canonical length, to be used by draw and collision
-//     let r = 25.0;
+fn draw_ship(transform: &Transform, colorbody: &ColorBody, frame: &mut [u8]) {
+    // TODO canonical length, to be used by draw and collision
+    let r = 25.0;
 
-//     let x = transform.position.x;
-//     let y = transform.position.y;
+    let x = transform.position.x;
+    let y = transform.position.y;
 
-//     let mut x1 = x - r / 2.0;
-//     let mut y1 = y - r / 2.0;
+    let mut x1 = x - r / 2.0;
+    let mut y1 = y - r / 2.0;
 
-//     let mut x2 = x1;
-//     let mut y2 = y + r / 2.0;
+    let mut x2 = x1;
+    let mut y2 = y + r / 2.0;
 
-//     let mut x3 = x + r;
-//     let mut y3 = y;
+    let mut x3 = x + r;
+    let mut y3 = y;
 
-//     let mut xm = x + r / 20.0;
-//     let mut ym = y;
+    let mut xm = x + r / 20.0;
+    let mut ym = y;
 
-//     let cx = (x1 + x2 + x3) / 3.0;
-//     let cy = (y1 + y2 + y3) / 3.0;
+    let cx = (x1 + x2 + x3) / 3.0;
+    let cy = (y1 + y2 + y3) / 3.0;
 
-//     (x1, y1) = rotate_point(x1, y1, transform.rotation, cx, cy);
-//     (xm, ym) = rotate_point(xm, ym, transform.rotation, cx, cy);
-//     (x2, y2) = rotate_point(x2, y2, transform.rotation, cx, cy);
-//     (x3, y3) = rotate_point(x3, y3, transform.rotation, cx, cy);
+    (x1, y1) = rotate_point(x1, y1, transform.rotation, cx, cy);
+    (xm, ym) = rotate_point(xm, ym, transform.rotation, cx, cy);
+    (x2, y2) = rotate_point(x2, y2, transform.rotation, cx, cy);
+    (x3, y3) = rotate_point(x3, y3, transform.rotation, cx, cy);
 
-//     // Draw the triangle
-//     canvas
-//         .draw_line(
-//             Point::new(x1 as i32, y1 as i32),
-//             Point::new(xm as i32, ym as i32),
-//         )
-//         .unwrap();
-//     canvas
-//         .draw_line(
-//             Point::new(xm as i32, ym as i32),
-//             Point::new(x2 as i32, y2 as i32),
-//         )
-//         .unwrap();
-//     canvas
-//         .draw_line(
-//             Point::new(x2 as i32, y2 as i32),
-//             Point::new(x3 as i32, y3 as i32),
-//         )
-//         .unwrap();
-//     canvas
-//         .draw_line(
-//             Point::new(x3 as i32, y3 as i32),
-//             Point::new(x1 as i32, y1 as i32),
-//         )
-//         .unwrap();
-// }
+    // Draw the triangle
+    // canvas
+    //     .draw_line(
+    //         Point::new(x1 as i32, y1 as i32),
+    //         Point::new(xm as i32, ym as i32),
+    //     )
+    //     .unwrap();
+    draw_line(
+        x1.round() as i32,
+        y1.round() as i32,
+        xm.round() as i32,
+        ym.round() as i32,
+        colorbody.primary,
+        frame,
+    );
+
+    // canvas
+    //     .draw_line(
+    //         Point::new(xm as i32, ym as i32),
+    //         Point::new(x2 as i32, y2 as i32),
+    //     )
+    //     .unwrap();
+    draw_line(
+        xm.round() as i32,
+        ym.round() as i32,
+        x2.round() as i32,
+        y2.round() as i32,
+        colorbody.primary,
+        frame,
+    );
+    // canvas
+    //     .draw_line(
+    //         Point::new(x2 as i32, y2 as i32),
+    //         Point::new(x3 as i32, y3 as i32),
+    //     )
+    //     .unwrap();
+    draw_line(
+        x2.round() as i32,
+        y2.round() as i32,
+        x3.round() as i32,
+        y3.round() as i32,
+        colorbody.primary,
+        frame,
+    );
+    // canvas
+    //     .draw_line(
+    //         Point::new(x3 as i32, y3 as i32),
+    //         Point::new(x1 as i32, y1 as i32),
+    //     )
+    //     .unwrap();
+    draw_line(
+        x3.round() as i32,
+        y3.round() as i32,
+        x1.round() as i32,
+        y1.round() as i32,
+        colorbody.primary,
+        frame,
+    );
+}

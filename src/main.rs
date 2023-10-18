@@ -1,9 +1,12 @@
 #![allow(unused)]
 mod components;
+mod draw;
 mod dsa;
 mod game;
 mod gui;
+mod pixel;
 mod systems;
+mod time;
 
 use std::{env, time::Instant};
 
@@ -12,7 +15,9 @@ use error_iter::ErrorIter as _;
 use game::{Dt, GetLoopState, LoopState};
 use gui::Framework;
 use log::{error, info};
+use pixel::Color;
 use pixels::{Error, Pixels, SurfaceTexture};
+use time::FrameTimer;
 use winit::{
     dpi::LogicalSize,
     event::{ElementState, Event, KeyboardInput, VirtualKeyCode, WindowEvent},
@@ -21,8 +26,8 @@ use winit::{
 };
 use winit_input_helper::WinitInputHelper;
 
-pub const WINDOW_WIDTH: u32 = 1280;
-pub const WINDOW_HEIGHT: u32 = 720;
+pub const WINDOW_WIDTH: f32 = 1280.0;
+pub const WINDOW_HEIGHT: f32 = 720.0;
 
 fn log_error<E: std::error::Error + 'static>(method_name: &str, err: E) {
     error!("{method_name}() failed: {err}");
@@ -49,7 +54,7 @@ fn init_gfx(
         let window_size = window.inner_size();
         let scale_factor = window.scale_factor() as f32;
         let surface_texture = SurfaceTexture::new(window_size.width, window_size.height, &window);
-        let pixels = Pixels::new(WINDOW_WIDTH, WINDOW_HEIGHT, surface_texture)?;
+        let pixels = Pixels::new(WINDOW_WIDTH as u32, WINDOW_HEIGHT as u32, surface_texture)?;
         let framework = Framework::new(
             event_loop,
             window_size.width,
@@ -72,15 +77,14 @@ fn run(
     mut game: Game,
 ) -> Result<(), Error> {
     game.setup();
-    let mut ms_prev_frame = Instant::now();
     game.loop_controller.run();
     let mut boxent = Box::new();
 
+    let mut ms_prev_frame = Instant::now();
+    let mut timer = FrameTimer::new(16);
+
     event_loop.run(move |event, _, control_flow| {
         control_flow.set_poll();
-        // TimeContext
-        // game.handle_tick(&ms_prev_frame);
-        // ms_prev_frame = Instant::now();
 
         // Handle input events
         if input.update(&event) {
@@ -107,20 +111,52 @@ fn run(
 
             game.process_input(&input);
 
-            match *game.get_loopstate() {
-                LoopState::Exiting => {
-                    *control_flow = ControlFlow::Exit;
-                }
-                LoopState::Running => {
-                    // game.update();
-                    boxent.update();
-                    window.request_redraw();
-                }
-                LoopState::Paused => {
-                    window.request_redraw();
-                }
-                _ => {}
+            let _dt = timer.tick();
+
+            if *game.get_loopstate() == LoopState::Exiting {
+                *control_flow = ControlFlow::Exit;
             }
+
+            ////////////////////////////////////////////////////////////////////
+            // UPDATE
+            ////////////////////////////////////////////////////////////////////
+            if *game.get_loopstate() == LoopState::Running {
+                game.update();
+            }
+            ////////////////////////////////////////////////////////////////////
+            ////////////////////////////////////////////////////////////////////
+
+            ////////////////////////////////////////////////////////////////////
+            // RENDER
+            ////////////////////////////////////////////////////////////////////
+            // Clear current rendering target with drawing color
+            for (i, pixel) in pixels.frame_mut().chunks_exact_mut(4).enumerate() {
+                pixel.copy_from_slice(&Color::BLACK.rgba());
+            }
+
+            // Mutate frame buffer
+            game.draw(pixels.frame_mut());
+
+            // Prepare egui
+            framework.prepare(&window);
+
+            // Render everything together
+            let render_result = pixels.render_with(|encoder, render_target, context| {
+                // Render the world texture
+                context.scaling_renderer.render(encoder, render_target);
+
+                // Render egui
+                framework.render(encoder, render_target, context);
+
+                Ok(())
+            });
+
+            if let Err(err) = render_result {
+                log_error("pixels.render", err);
+                *control_flow = ControlFlow::Exit;
+            }
+            ////////////////////////////////////////////////////////////////////
+            ////////////////////////////////////////////////////////////////////
         }
 
         // RENDER
@@ -128,30 +164,7 @@ fn run(
             Event::WindowEvent { event, .. } => {
                 framework.handle_event(&event);
             }
-            Event::RedrawRequested(_) => {
-                // Fill frame buffer
-                game.draw(pixels.frame_mut());
-                boxent.draw(pixels.frame_mut());
-
-                // Prepare egui
-                framework.prepare(&window);
-
-                // Render everything together
-                let render_result = pixels.render_with(|encoder, render_target, context| {
-                    // Render the world texture
-                    context.scaling_renderer.render(encoder, render_target);
-
-                    // Render egui
-                    framework.render(encoder, render_target, context);
-
-                    Ok(())
-                });
-
-                if let Err(err) = render_result {
-                    log_error("pixels.render", err);
-                    *control_flow = ControlFlow::Exit;
-                }
-            }
+            Event::RedrawRequested(_) => {}
             _ => (),
         }
     });

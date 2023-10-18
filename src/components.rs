@@ -1,4 +1,6 @@
 use nalgebra_glm::Vec2;
+
+use crate::pixel::Color;
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Transform {
     pub position: Vec2,
@@ -13,15 +15,14 @@ pub struct RigidBody {
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct CollisionArea {
-    pub w: u32,
-    pub h: u32,
+    pub w: f32,
+    pub h: f32,
 }
-
-// #[derive(Clone, Copy, Debug, PartialEq)]
-// pub struct ColorBody {
-//     pub primary: Color,
-//     pub secondary: Color,
-// }
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ColorBody {
+    pub primary: Color,
+    pub secondary: Color,
+}
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Turn {
