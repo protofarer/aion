@@ -129,8 +129,8 @@ impl Game {
             h: WINDOW_HEIGHT,
         });
 
-        // .add_system(process_input_system())
         let update_schedule = Schedule::builder()
+            .add_system(process_input_system())
             .flush()
             .add_system(update_movement_state_system())
             .add_system(update_positions_system())
@@ -455,42 +455,46 @@ impl Game {
 
     fn set_rotational_input(&mut self, input: &WinitInputHelper) {
         fn set_input_turn(turn: Turn, world: &mut World) {
-            // let mut query = <&mut RotationalInput>::query();
-            // for input in query.iter_mut(world) {
-            //     input.turn_sign = Some(turn);
-            // }
+            let mut query = <&mut RotationalInput>::query();
+            for input in query.iter_mut(world) {
+                input.turn_sign = Some(turn);
+            }
             dev!("turning");
         }
         fn set_input_thrust(is_thrusting: bool, world: &mut World) {
-            dev!("thrusting");
-            // let mut query = <&mut RotationalInput>::query();
-            // for input in query.iter_mut(world) {
-            //     input.is_thrusting = is_thrusting;
-            // }
+            let mut query = <&mut RotationalInput>::query();
+            for input in query.iter_mut(world) {
+                input.is_thrusting = is_thrusting;
+            }
         }
 
         if *self.loop_controller.get_state() == LoopState::Running {
             // HANDLE SINGLE MOVE KEYS
-            if input.key_pressed(VirtualKeyCode::D) {
+            if input.key_pressed(VirtualKeyCode::D) || input.key_held(VirtualKeyCode::D) {
                 set_input_turn(Turn::Right, &mut self.world);
             }
-            // VirtualKeyCode::A => {
-            //     set_input_turn(Turn::Left, &mut self.world);
-            // }
-            // VirtualKeyCode::W => {
-            //     // set thrust
-            //     set_input_thrust(true, &mut self.world);
-            // }
-            // VirtualKeyCode::S => {
-            //     set_input_turn(Direction::S);
-            // }
+            if input.key_pressed(VirtualKeyCode::A) || input.key_held(VirtualKeyCode::A) {
+                set_input_turn(Turn::Left, &mut self.world);
+            }
+            if input.key_pressed(VirtualKeyCode::W) || input.key_held(VirtualKeyCode::W) {
+                set_input_thrust(true, &mut self.world);
+            }
+            // J = regular collect/mine/gather
+            // K = regular attack
+            // L = special attack
+            // space = evade
+            // double-tap w = afterburn, limit agility
+            // S hold = initiate warp drive, no agility
+            // C = scanner, info about off-screen objects (ships, collidables, resources, events)
+            // C is not trivial, timing C to see special cosmic events or gain intel is CRUCIAL
+            // has a cooldown or optionaly can be overdriven but can overheat systems
         }
     }
 }
 
 impl Drop for Game {
     fn drop(&mut self) {
-        // Logger::dbg("Drop game");
+        dev!("Game dropped");
     }
 }
 
@@ -503,7 +507,6 @@ fn rotate_point(x: f32, y: f32, rotation: f32, cx: f32, cy: f32) -> (f32, f32) {
 }
 
 fn draw_ship(transform: &Transform, colorbody: &ColorBody, frame: &mut [u8]) {
-    // TODO canonical length, to be used by draw and collision
     let r = 25.0;
 
     let x = transform.position.x;
@@ -530,12 +533,6 @@ fn draw_ship(transform: &Transform, colorbody: &ColorBody, frame: &mut [u8]) {
     (x3, y3) = rotate_point(x3, y3, transform.rotation, cx, cy);
 
     // Draw the triangle
-    // canvas
-    //     .draw_line(
-    //         Point::new(x1 as i32, y1 as i32),
-    //         Point::new(xm as i32, ym as i32),
-    //     )
-    //     .unwrap();
     draw_line(
         x1.round() as i32,
         y1.round() as i32,
@@ -545,12 +542,6 @@ fn draw_ship(transform: &Transform, colorbody: &ColorBody, frame: &mut [u8]) {
         frame,
     );
 
-    // canvas
-    //     .draw_line(
-    //         Point::new(xm as i32, ym as i32),
-    //         Point::new(x2 as i32, y2 as i32),
-    //     )
-    //     .unwrap();
     draw_line(
         xm.round() as i32,
         ym.round() as i32,
@@ -559,12 +550,6 @@ fn draw_ship(transform: &Transform, colorbody: &ColorBody, frame: &mut [u8]) {
         colorbody.primary,
         frame,
     );
-    // canvas
-    //     .draw_line(
-    //         Point::new(x2 as i32, y2 as i32),
-    //         Point::new(x3 as i32, y3 as i32),
-    //     )
-    //     .unwrap();
     draw_line(
         x2.round() as i32,
         y2.round() as i32,
@@ -573,12 +558,6 @@ fn draw_ship(transform: &Transform, colorbody: &ColorBody, frame: &mut [u8]) {
         colorbody.primary,
         frame,
     );
-    // canvas
-    //     .draw_line(
-    //         Point::new(x3 as i32, y3 as i32),
-    //         Point::new(x1 as i32, y1 as i32),
-    //     )
-    //     .unwrap();
     draw_line(
         x3.round() as i32,
         y3.round() as i32,

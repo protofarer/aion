@@ -3,6 +3,7 @@ mod components;
 mod draw;
 mod dsa;
 mod game;
+mod geom;
 mod gui;
 mod pixel;
 mod systems;
@@ -15,7 +16,7 @@ use error_iter::ErrorIter as _;
 use game::{Dt, GetLoopState, LoopState};
 use gui::Framework;
 use log::{error, info};
-use pixel::Color;
+use pixel::{Color, BLACK};
 use pixels::{Error, Pixels, SurfaceTexture};
 use time::FrameTimer;
 use winit::{
@@ -131,7 +132,7 @@ fn run(
             ////////////////////////////////////////////////////////////////////
             // Clear current rendering target with drawing color
             for (i, pixel) in pixels.frame_mut().chunks_exact_mut(4).enumerate() {
-                pixel.copy_from_slice(&Color::BLACK.rgba());
+                pixel.copy_from_slice(BLACK.as_bytes());
             }
 
             // Mutate frame buffer

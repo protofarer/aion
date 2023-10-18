@@ -5,7 +5,7 @@ use super::{WINDOW_HEIGHT, WINDOW_WIDTH};
 pub fn draw_pixel(x: i32, y: i32, color: Color, frame: &mut [u8]) {
     if x >= 0 && x < (4 * WINDOW_WIDTH as i32) && y >= 0 && y < WINDOW_HEIGHT as i32 {
         let i = ((WINDOW_WIDTH as i32 * y + x) * 4) as usize;
-        frame[i..i + 4].copy_from_slice(&color.rgba());
+        frame[i..i + 4].copy_from_slice(color.as_bytes());
     }
 }
 
@@ -14,10 +14,10 @@ pub fn draw_rect(x: i32, y: i32, width: i32, height: i32, color: Color, frame: &
         for j in x..=x + width {
             let n = (WINDOW_WIDTH as i32 * i + j) as usize;
             if (i == y || i == y + height) && (j >= x && j <= x + width) {
-                frame[n..n + 4].copy_from_slice(&color.rgba());
+                frame[n..n + 4].copy_from_slice(color.as_bytes());
             }
             if (j == x || j == x + width) && (i >= y && i <= y + height) {
-                frame[n..n + 4].copy_from_slice(&color.rgba());
+                frame[n..n + 4].copy_from_slice(color.as_bytes());
             }
         }
     }

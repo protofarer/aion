@@ -1,6 +1,6 @@
+use crate::pixel::Color;
 use nalgebra_glm::Vec2;
 
-use crate::pixel::Color;
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Transform {
     pub position: Vec2,

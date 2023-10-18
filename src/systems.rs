@@ -101,7 +101,6 @@ pub fn process_input(
     transform: &mut Transform,
     rigidbody: &mut RigidBody,
 ) {
-    // println!("in process input");
     match rotational_input.turn_sign {
         Some(Turn::Right) => {
             transform.rotation =
