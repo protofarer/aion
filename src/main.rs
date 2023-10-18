@@ -74,18 +74,16 @@ fn run(
     game.setup();
     let mut ms_prev_frame = Instant::now();
     game.loop_controller.run();
+    let mut boxent = Box::new();
 
     event_loop.run(move |event, _, control_flow| {
-        game.handle_tick(&ms_prev_frame);
-        ms_prev_frame = Instant::now();
+        control_flow.set_poll();
+        // TimeContext
+        // game.handle_tick(&ms_prev_frame);
+        // ms_prev_frame = Instant::now();
 
         // Handle input events
         if input.update(&event) {
-            //         self.handle_tick(&ms_prev_frame);
-            //         ms_prev_frame = Instant::now();
-            //         self.handle_input();
-            // WINDOW EVENTS
-            // Close events
             if input.close_requested()
                 || (*game.get_loopstate() == LoopState::Stopped
                     && input.key_pressed(VirtualKeyCode::Escape))
@@ -94,12 +92,10 @@ fn run(
                 return;
             }
 
-            // Update scale factor
             if let Some(scale_factor) = input.scale_factor() {
                 framework.scale_factor(scale_factor);
             }
 
-            // Resize the window
             if let Some(size) = input.window_resized() {
                 if let Err(err) = pixels.resize_surface(size.width, size.height) {
                     log_error("pixels.resize_surface", err);
@@ -108,62 +104,55 @@ fn run(
                 }
                 framework.resize(size.width, size.height);
             }
+
             game.process_input(&input);
 
-            // Update internal state and request a redraw
-            window.request_redraw();
-        }
-
-        match game.get_loopstate() {
-            LoopState::Running => {
-                //update
-                // game.update();
+            match *game.get_loopstate() {
+                LoopState::Exiting => {
+                    *control_flow = ControlFlow::Exit;
+                }
+                LoopState::Running => {
+                    // game.update();
+                    boxent.update();
+                    window.request_redraw();
+                }
+                LoopState::Paused => {
+                    window.request_redraw();
+                }
+                _ => {}
             }
-            LoopState::Exiting => {
-                *control_flow = ControlFlow::Exit;
-                // exit event loop
-            }
-            _ => {}
         }
 
         // RENDER
-        if *game.get_loopstate() != LoopState::Stopped {
-            match event {
-                Event::WindowEvent { event, .. } => {
-                    // Update egui inputs
-                    framework.handle_event(&event);
-                }
-                // Draw the current frame
-                Event::RedrawRequested(_) => {
-                    // Fill frame buffer
-                    if *game.get_loopstate() != LoopState::Stopped {
-                        game.draw(pixels.frame_mut());
-                    }
-
-                    // Prepare egui
-                    framework.prepare(&window);
-
-                    // Render everything together
-                    let render_result = pixels.render_with(|encoder, render_target, context| {
-                        // Render the world texture
-                        if *game.get_loopstate() != LoopState::Stopped {
-                            context.scaling_renderer.render(encoder, render_target);
-                        }
-
-                        // Render egui
-                        framework.render(encoder, render_target, context);
-
-                        Ok(())
-                    });
-
-                    // Basic error handling
-                    if let Err(err) = render_result {
-                        log_error("pixels.render", err);
-                        *control_flow = ControlFlow::Exit;
-                    }
-                }
-                _ => (),
+        match event {
+            Event::WindowEvent { event, .. } => {
+                framework.handle_event(&event);
             }
+            Event::RedrawRequested(_) => {
+                // Fill frame buffer
+                game.draw(pixels.frame_mut());
+                boxent.draw(pixels.frame_mut());
+
+                // Prepare egui
+                framework.prepare(&window);
+
+                // Render everything together
+                let render_result = pixels.render_with(|encoder, render_target, context| {
+                    // Render the world texture
+                    context.scaling_renderer.render(encoder, render_target);
+
+                    // Render egui
+                    framework.render(encoder, render_target, context);
+
+                    Ok(())
+                });
+
+                if let Err(err) = render_result {
+                    log_error("pixels.render", err);
+                    *control_flow = ControlFlow::Exit;
+                }
+            }
+            _ => (),
         }
     });
 }
@@ -201,4 +190,58 @@ fn main() {
         std::process::exit(1);
     });
     run(event_loop, window, pixels, framework, input, ctx, game);
+}
+
+struct Box {
+    box_x: i32,
+    box_y: i32,
+    w: i32,
+    h: i32,
+    velocity_x: i32,
+    velocity_y: i32,
+}
+
+impl Box {
+    fn new() -> Self {
+        Box {
+            box_x: 25,
+            box_y: 15,
+            velocity_x: 15,
+            velocity_y: 15,
+            w: 25,
+            h: 25,
+        }
+    }
+    fn update(&mut self) {
+        self.box_x = (self.box_x + self.velocity_x);
+        self.box_y = (self.box_y + self.velocity_y);
+
+        if self.box_x <= 0 || self.box_x + self.w > WINDOW_WIDTH as i32 {
+            self.velocity_x *= -1;
+        }
+        if self.box_y <= 0 || self.box_y + self.h > WINDOW_HEIGHT as i32 {
+            self.velocity_y *= -1;
+        }
+        if self.box_y < 0 {
+            self.box_y = 0;
+        }
+        if self.box_x < 0 {
+            self.box_x = 0;
+        }
+        if self.box_x + self.w > WINDOW_WIDTH as i32 {
+            self.box_x = WINDOW_WIDTH as i32 - self.w;
+        }
+        if self.box_y + self.h > WINDOW_HEIGHT as i32 {
+            self.box_y = WINDOW_HEIGHT as i32 - self.h;
+        }
+    }
+    fn draw(&self, frame: &mut [u8]) {
+        for y in self.box_y..self.box_y + self.h {
+            for x in self.box_x..self.box_x + self.w {
+                let i: usize = ((y * WINDOW_WIDTH as i32 + x) * 4) as usize;
+                let color = [0x5e, 0x48, 0xe8, 0xff];
+                frame[i..i + 4].copy_from_slice(&color);
+            }
+        }
+    }
 }

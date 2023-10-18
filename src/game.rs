@@ -172,7 +172,7 @@ impl Game {
         if input.key_pressed(VirtualKeyCode::Semicolon) {
             if *self.get_loopstate() == LoopState::Stopped {
                 self.loop_controller.run();
-            } else if *self.get_loopstate() != LoopState::Running {
+            } else if *self.get_loopstate() != LoopState::Stopped {
                 self.loop_controller.stop();
             }
         }
@@ -562,56 +562,3 @@ fn rotate_point(x: f32, y: f32, rotation: f32, cx: f32, cy: f32) -> (f32, f32) {
 //         )
 //         .unwrap();
 // }
-
-/// Representation of the application state. In this example, a box will bounce around the screen.
-const WIDTH: usize = 320;
-const HEIGHT: usize = 240;
-
-struct Box {
-    box_x: usize,
-    box_y: usize,
-    w: usize,
-    h: usize,
-    velocity_x: i16,
-    velocity_y: i16,
-}
-
-impl Box {
-    fn new() -> Self {
-        Box {
-            box_x: 24,
-            box_y: 16,
-            velocity_x: 5,
-            velocity_y: 5,
-            w: 25,
-            h: 25,
-        }
-    }
-    fn update(&mut self) {
-        self.box_x = (self.box_x as i16 + self.velocity_x) as usize;
-        self.box_y = (self.box_y as i16 + self.velocity_y) as usize;
-
-        if self.box_x <= 0 || self.box_x + self.w > WIDTH {
-            self.velocity_x *= -1;
-        }
-        if self.box_y <= 0 || self.box_y + self.h > HEIGHT {
-            self.velocity_y *= -1;
-        }
-
-        if self.box_x + self.w > WIDTH {
-            self.box_x = WIDTH - self.w;
-        }
-        if self.box_y + self.h > HEIGHT {
-            self.box_y = HEIGHT - self.h;
-        }
-    }
-    fn draw(&self, frame: &mut [u8]) {
-        for y in self.box_y..self.box_y + self.h - 1 {
-            for x in self.box_x..self.box_x + self.w - 1 {
-                let i = (y * WIDTH + x) * 4;
-                let color = [0x5e, 0x48, 0xe8, 0xff];
-                frame[i..i + 4].copy_from_slice(&color);
-            }
-        }
-    }
-}
