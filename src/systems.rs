@@ -94,6 +94,7 @@ pub fn collision(
     }
 }
 
+// ? how to have this run only when input changes?
 #[system(for_each)]
 pub fn process_input(
     rotational_input: &RotationalInput,
@@ -119,6 +120,8 @@ pub fn process_input(
         }
         false => {
             // test when decel cross 0 in either direction
+            // todo don't hard set here, simply make no change, for maintaining momentum in prototype stage
+            // todo repeats when no key is pressed...
             rigidbody.velocity = Vec2::default();
         }
     }

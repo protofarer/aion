@@ -1,7 +1,6 @@
 #![allow(unused)]
 mod components;
 mod draw;
-mod dsa;
 mod game;
 mod geom;
 mod gui;
@@ -79,9 +78,6 @@ fn run(
 ) -> Result<(), Error> {
     game.setup();
     game.loop_controller.run();
-    let mut boxent = Box::new();
-
-    let mut ms_prev_frame = Instant::now();
     let mut timer = FrameTimer::new(16);
 
     event_loop.run(move |event, _, control_flow| {
@@ -112,60 +108,62 @@ fn run(
 
             game.process_input(&input);
 
-            let _dt = timer.tick();
-
             if *game.get_loopstate() == LoopState::Exiting {
                 *control_flow = ControlFlow::Exit;
             }
-
-            ////////////////////////////////////////////////////////////////////
-            // UPDATE
-            ////////////////////////////////////////////////////////////////////
-            if *game.get_loopstate() == LoopState::Running {
-                game.update();
-            }
-            ////////////////////////////////////////////////////////////////////
-            ////////////////////////////////////////////////////////////////////
-
-            ////////////////////////////////////////////////////////////////////
-            // RENDER
-            ////////////////////////////////////////////////////////////////////
-            // Clear current rendering target with drawing color
-            for (i, pixel) in pixels.frame_mut().chunks_exact_mut(4).enumerate() {
-                pixel.copy_from_slice(BLACK.as_bytes());
-            }
-
-            // Mutate frame buffer
-            game.draw(pixels.frame_mut());
-
-            // Prepare egui
-            framework.prepare(&window);
-
-            // Render everything together
-            let render_result = pixels.render_with(|encoder, render_target, context| {
-                // Render the world texture
-                context.scaling_renderer.render(encoder, render_target);
-
-                // Render egui
-                framework.render(encoder, render_target, context);
-
-                Ok(())
-            });
-
-            if let Err(err) = render_result {
-                log_error("pixels.render", err);
-                *control_flow = ControlFlow::Exit;
-            }
-            ////////////////////////////////////////////////////////////////////
-            ////////////////////////////////////////////////////////////////////
         }
 
-        // RENDER
         match event {
+            Event::MainEventsCleared => {
+                ////////////////////////////////////////////////////////////////////
+                // UPDATE
+                ////////////////////////////////////////////////////////////////////
+                let _dt = timer.tick();
+                println!("dt: {}", _dt.as_millis());
+                if *game.get_loopstate() == LoopState::Running {
+                    game.update();
+                }
+                ////////////////////////////////////////////////////////////////////
+                ////////////////////////////////////////////////////////////////////
+                window.request_redraw();
+            }
             Event::WindowEvent { event, .. } => {
                 framework.handle_event(&event);
             }
-            Event::RedrawRequested(_) => {}
+            Event::RedrawRequested(_) => {
+                ////////////////////////////////////////////////////////////////////
+                // RENDER
+                ////////////////////////////////////////////////////////////////////
+                // Clear current rendering target with drawing color
+                // a faster clear?
+                for (i, pixel) in pixels.frame_mut().chunks_exact_mut(4).enumerate() {
+                    pixel.copy_from_slice(BLACK.as_bytes());
+                }
+
+                // Mutate frame buffer
+                game.draw(pixels.frame_mut());
+
+                // Prepare egui
+                framework.prepare(&window);
+
+                // Render everything together
+                let render_result = pixels.render_with(|encoder, render_target, context| {
+                    // Render the world texture
+                    context.scaling_renderer.render(encoder, render_target);
+
+                    // Render egui
+                    framework.render(encoder, render_target, context);
+
+                    Ok(())
+                });
+
+                if let Err(err) = render_result {
+                    log_error("pixels.render", err);
+                    *control_flow = ControlFlow::Exit;
+                }
+                ////////////////////////////////////////////////////////////////////
+                ////////////////////////////////////////////////////////////////////
+            }
             _ => (),
         }
     });
@@ -203,59 +201,6 @@ fn main() {
         println!("{e}");
         std::process::exit(1);
     });
+
     run(event_loop, window, pixels, framework, input, ctx, game);
-}
-
-struct Box {
-    box_x: i32,
-    box_y: i32,
-    w: i32,
-    h: i32,
-    velocity_x: i32,
-    velocity_y: i32,
-}
-
-impl Box {
-    fn new() -> Self {
-        Box {
-            box_x: 25,
-            box_y: 15,
-            velocity_x: 15,
-            velocity_y: 15,
-            w: 25,
-            h: 25,
-        }
-    }
-    fn update(&mut self) {
-        self.box_x = (self.box_x + self.velocity_x);
-        self.box_y = (self.box_y + self.velocity_y);
-
-        if self.box_x <= 0 || self.box_x + self.w > WINDOW_WIDTH as i32 {
-            self.velocity_x *= -1;
-        }
-        if self.box_y <= 0 || self.box_y + self.h > WINDOW_HEIGHT as i32 {
-            self.velocity_y *= -1;
-        }
-        if self.box_y < 0 {
-            self.box_y = 0;
-        }
-        if self.box_x < 0 {
-            self.box_x = 0;
-        }
-        if self.box_x + self.w > WINDOW_WIDTH as i32 {
-            self.box_x = WINDOW_WIDTH as i32 - self.w;
-        }
-        if self.box_y + self.h > WINDOW_HEIGHT as i32 {
-            self.box_y = WINDOW_HEIGHT as i32 - self.h;
-        }
-    }
-    fn draw(&self, frame: &mut [u8]) {
-        for y in self.box_y..self.box_y + self.h {
-            for x in self.box_x..self.box_x + self.w {
-                let i: usize = ((y * WINDOW_WIDTH as i32 + x) * 4) as usize;
-                let color = [0x5e, 0x48, 0xe8, 0xff];
-                frame[i..i + 4].copy_from_slice(&color);
-            }
-        }
-    }
 }

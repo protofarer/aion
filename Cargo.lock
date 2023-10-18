@@ -63,6 +63,7 @@ dependencies = [
  "egui-winit",
  "env_logger",
  "error-iter",
+ "game-loop",
  "legion",
  "log",
  "nalgebra-glm",
@@ -615,6 +616,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a62bc1cf6f830c2ec14a513a9fb124d0a213a629668a4186f329db21fe045652"
 dependencies = [
  "percent-encoding",
+]
+
+[[package]]
+name = "game-loop"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "70bb1e77782202c6936f53fe0db73db074f194486934b795b1b5495c1d9c1f50"
+dependencies = [
+ "wasm-bindgen",
+ "web-sys",
+ "winit",
 ]
 
 [[package]]

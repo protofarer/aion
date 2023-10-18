@@ -173,6 +173,9 @@ impl Game {
                 self.loop_controller.stop();
             }
         }
+        if input.key_pressed(VirtualKeyCode::Grave) {
+            self.is_debug_on = !self.is_debug_on;
+        }
         self.process_player_control_keys(input);
         // self.handle_key_up(keys_down);
     }
@@ -232,9 +235,9 @@ impl Game {
                 is_thrusting: false,
             },
             MovementStats {
-                speed: 10f32,
-                turn_rate: 0.1f32,
-                decel: 0.2f32,
+                speed: 1000f32,
+                turn_rate: 0.2f32,
+                decel: 0.5f32,
             },
         ));
 
@@ -308,158 +311,15 @@ impl Game {
 
     fn process_player_control_keys(&mut self, input: &WinitInputHelper) {
         // HANDLE VALID SIMULTANEOUS MOVE KEYS
-        // let key_downs: Vec<VirtualKeyCode> = self
-        //     .key_states
-        //     .iter()
-        //     .filter_map(|(keycode, buttonstate)| {
-        //         if *buttonstate == Some(ButtonState::Down) {
-        //             Some(*keycode)
-        //         } else {
-        //             None
-        //         }
-        //     })
-        //     .collect();
         self.set_rotational_input(input);
-        //     // self.set_translational_input(key_downs);
-
-        //     // HANDLE KEY UPS
-        //     let key_ups: Vec<Keycode> = self
-        //         .key_states
-        //         .iter()
-        //         .filter_map(|(keycode, buttonstate)| {
-        //             if *buttonstate == Some(ButtonState::Up) {
-        //                 Some(*keycode)
-        //             } else {
-        //                 None
-        //             }
-        //         })
-        //         .collect();
-
-        //     let mut key_ups_to_remove: Vec<Keycode> = vec![];
-
-        //     for keycode in key_ups.iter() {
-        //         match keycode {
-        //             // HANDLE GAME RUN STATE KEYS
-        //             Keycode::P => {
-        //                 match self.run_state {
-        //                     RunState::Paused => {
-        //                         Logger::info("Game unpaused");
-        //                         self.run_state = RunState::Running;
-        //                     }
-        //                     RunState::Running => {
-        //                         Logger::info("Game paused");
-        //                         self.run_state = RunState::Paused;
-        //                     }
-        //                     _ => {}
-        //                 }
-        //                 key_ups_to_remove.push(Keycode::P);
-        //             }
-        //             Keycode::Semicolon => {
-        //                 match self.run_state {
-        //                     RunState::Stopped => {
-        //                         Logger::info("Game resuming");
-        //                         self.run_state = RunState::Resuming;
-        //                     }
-        //                     RunState::Paused | RunState::Running => {
-        //                         Logger::info("Game stopped");
-        //                         self.run_state = RunState::Stopped;
-        //                     }
-        //                     _ => {
-        //                         Logger::dbg("Cannot stop game while it is in process of resuming");
-        //                     }
-        //                 }
-        //                 key_ups_to_remove.push(Keycode::Semicolon);
-        //             }
-        //             Keycode::Quote => {
-        //                 self.is_debug_on = !self.is_debug_on;
-        //                 let mode = if self.is_debug_on { "ON" } else { "OFF" };
-        //                 key_ups_to_remove.push(Keycode::Quote);
-        //                 Logger::dbg(&format!("Debug mode {}", mode));
-        //             }
-        //             Keycode::D | Keycode::A => {
-        //                 // same code as fn set_rotational_input somewhere else
-        //                 let mut query = <&mut RotationalInput>::query();
-        //                 for input in query.iter_mut(&mut self.world) {
-        //                     input.turn_sign = None;
-        //                 }
-        //                 key_ups_to_remove.push(*keycode);
-        //             }
-        //             Keycode::W => {
-        //                 // same code as fn set_rotational_input somewhere else
-        //                 let mut query = <&mut RotationalInput>::query();
-        //                 for input in query.iter_mut(&mut self.world) {
-        //                     input.is_thrusting = false;
-        //                 }
-        //                 key_ups_to_remove.push(*keycode);
-        //             }
-        //             Keycode::S => {
-        //                 // let mut query = <&mut TranslationalInput>::query();
-        //                 // for input in query.iter_mut(&mut self.world) {
-        //                 //     input.direction = None;
-        //                 // }
-
-        //                 key_ups_to_remove.push(*keycode);
-        //             }
-        //             otherkeycodes => {
-        //                 // Defaults to remove from hashmap, cleanup keys w/o associated action
-        //                 key_ups_to_remove.push(*otherkeycodes);
-        //             }
-        //         }
-        //     }
-        //     for keycode in key_ups_to_remove {
-        //         self.key_states.remove(&keycode);
-        //     }
-        // }
-
-        // fn set_translational_input(&mut self, key_downs: Vec<Keycode>) {
-        //     let mut set_input_dir = |dir: Direction| {
-        //         let mut query = <&mut TranslationalInput>::query();
-        //         for input in query.iter_mut(&mut self.world) {
-        //             input.direction = Some(dir);
-        //         }
-        //     };
-
-        //     if let RunState::Running = self.run_state {
-        //         // ONLY ACTIVATE FOR TRANSLATIONAL HUMAN INPUTS... query the "player" input type
-        //         if key_downs.contains(&Keycode::W) && key_downs.contains(&Keycode::D) {
-        //             set_input_dir(Direction::NE)
-        //         } else if key_downs.contains(&Keycode::S) && key_downs.contains(&Keycode::D) {
-        //             set_input_dir(Direction::SE);
-        //         } else if key_downs.contains(&Keycode::S) && key_downs.contains(&Keycode::A) {
-        //             set_input_dir(Direction::SW);
-        //         } else if key_downs.contains(&Keycode::W) && key_downs.contains(&Keycode::A) {
-        //             set_input_dir(Direction::NW);
-        //         } else {
-        //             // HANDLE SINGLE MOVE KEYS
-        //             for keycode in key_downs.iter() {
-        //                 match keycode {
-        //                     Keycode::D => {
-        //                         set_input_dir(Direction::E);
-        //                     }
-        //                     Keycode::W => {
-        //                         set_input_dir(Direction::N);
-        //                     }
-        //                     Keycode::S => {
-        //                         set_input_dir(Direction::S);
-        //                     }
-        //                     Keycode::A => {
-        //                         set_input_dir(Direction::W);
-        //                     }
-        //                     _ => {}
-        //                 }
-        //             }
-        //         }
-        //     }
-        // }
     }
 
     fn set_rotational_input(&mut self, input: &WinitInputHelper) {
-        fn set_input_turn(turn: Turn, world: &mut World) {
+        fn set_input_turn(turn: Option<Turn>, world: &mut World) {
             let mut query = <&mut RotationalInput>::query();
             for input in query.iter_mut(world) {
-                input.turn_sign = Some(turn);
+                input.turn_sign = turn;
             }
-            dev!("turning");
         }
         fn set_input_thrust(is_thrusting: bool, world: &mut World) {
             let mut query = <&mut RotationalInput>::query();
@@ -471,23 +331,22 @@ impl Game {
         if *self.loop_controller.get_state() == LoopState::Running {
             // HANDLE SINGLE MOVE KEYS
             if input.key_pressed(VirtualKeyCode::D) || input.key_held(VirtualKeyCode::D) {
-                set_input_turn(Turn::Right, &mut self.world);
+                set_input_turn(Some(Turn::Right), &mut self.world);
             }
             if input.key_pressed(VirtualKeyCode::A) || input.key_held(VirtualKeyCode::A) {
-                set_input_turn(Turn::Left, &mut self.world);
+                set_input_turn(Some(Turn::Left), &mut self.world);
             }
             if input.key_pressed(VirtualKeyCode::W) || input.key_held(VirtualKeyCode::W) {
                 set_input_thrust(true, &mut self.world);
             }
-            // J = regular collect/mine/gather
-            // K = regular attack
-            // L = special attack
-            // space = evade
-            // double-tap w = afterburn, limit agility
-            // S hold = initiate warp drive, no agility
-            // C = scanner, info about off-screen objects (ships, collidables, resources, events)
-            // C is not trivial, timing C to see special cosmic events or gain intel is CRUCIAL
-            // has a cooldown or optionaly can be overdriven but can overheat systems
+        }
+
+        // HANDLE KEY UPS
+        if input.key_released(VirtualKeyCode::D) || input.key_released(VirtualKeyCode::A) {
+            set_input_turn(None, &mut self.world);
+        }
+        if input.key_released(VirtualKeyCode::W) {
+            set_input_thrust(false, &mut self.world);
         }
     }
 }
