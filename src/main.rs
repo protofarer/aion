@@ -27,8 +27,10 @@ use winit::{
 };
 use winit_input_helper::WinitInputHelper;
 
-pub const WINDOW_WIDTH: f32 = 1280.0;
-pub const WINDOW_HEIGHT: f32 = 720.0;
+pub const LOGICAL_WINDOW_WIDTH: f32 = 640.;
+pub const LOGICAL_WINDOW_HEIGHT: f32 = 360.;
+pub const PHYSICAL_WINDOW_WIDTH: f32 = 1920.;
+pub const PHYSICAL_WINDOW_HEIGHT: f32 = 1080.;
 
 fn log_error<E: std::error::Error + 'static>(method_name: &str, err: E) {
     error!("{method_name}() failed: {err}");
@@ -38,11 +40,12 @@ fn log_error<E: std::error::Error + 'static>(method_name: &str, err: E) {
 }
 
 fn init_window(event_loop: &EventLoop<()>) -> Window {
-    let size = winit::dpi::LogicalSize::new(WINDOW_WIDTH, WINDOW_HEIGHT);
+    let logical_size = winit::dpi::LogicalSize::new(LOGICAL_WINDOW_WIDTH, LOGICAL_WINDOW_HEIGHT);
+    let physical_size = LogicalSize::new(PHYSICAL_WINDOW_WIDTH, PHYSICAL_WINDOW_HEIGHT);
     winit::window::WindowBuilder::new()
         .with_title("my_window")
-        .with_inner_size(size)
-        .with_min_inner_size(size)
+        .with_inner_size(physical_size)
+        .with_min_inner_size(logical_size)
         .build(&event_loop)
         .unwrap()
 }
@@ -53,9 +56,14 @@ fn init_gfx(
 ) -> Result<(Pixels, Framework), pixels::Error> {
     let (pixels, framework) = {
         let scale_factor = window.scale_factor() as f32;
-        let window_size = window.inner_size();
+        let window_size = window.inner_size(); // Physical screen dims (scaled from logical)
         let surface_texture = SurfaceTexture::new(window_size.width, window_size.height, &window);
-        let pixels = Pixels::new(WINDOW_WIDTH as u32, WINDOW_HEIGHT as u32, surface_texture)?;
+
+        let pixels = Pixels::new(
+            LOGICAL_WINDOW_WIDTH as u32,
+            LOGICAL_WINDOW_HEIGHT as u32,
+            surface_texture,
+        )?;
         let framework = Framework::new(
             event_loop,
             window_size.width,
@@ -119,8 +127,6 @@ fn run(
                 ////////////////////////////////////////////////////////////////////
                 // UPDATE
                 ////////////////////////////////////////////////////////////////////
-                let _dt = timer.tick();
-                println!("dt: {}", _dt.as_millis());
                 // if *game.get_loopstate() == LoopState::Running {
                 //     game.update();
                 // }
@@ -132,6 +138,8 @@ fn run(
                 framework.handle_event(&event);
             }
             Event::RedrawRequested(_) => {
+                let _dt = timer.tick();
+                println!("dt: {}", _dt.as_millis());
                 ////////////////////////////////////////////////////////////////////
                 // RENDER
                 ////////////////////////////////////////////////////////////////////

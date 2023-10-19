@@ -12,7 +12,7 @@ use winit_input_helper::WinitInputHelper;
 use crate::draw::{draw_line, draw_pixel};
 use crate::gui::Framework;
 use crate::pixel::{Color, BLACK};
-use crate::{dev, game, log_error, WINDOW_HEIGHT, WINDOW_WIDTH}; // little function in main.rs
+use crate::{dev, game, log_error, LOGICAL_WINDOW_HEIGHT, LOGICAL_WINDOW_WIDTH}; // little function in main.rs
 use legion::*;
 use nalgebra_glm::Vec2;
 use pixels::{Pixels, SurfaceTexture};
@@ -127,8 +127,8 @@ impl Game {
 
         // ? is this correct, to send a ref to a copy trait variable
         resources.insert(WindowDims {
-            w: WINDOW_WIDTH,
-            h: WINDOW_HEIGHT,
+            w: LOGICAL_WINDOW_WIDTH,
+            h: LOGICAL_WINDOW_HEIGHT,
         });
 
         let update_schedule = Schedule::builder()

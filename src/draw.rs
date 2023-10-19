@@ -1,10 +1,11 @@
 use crate::{components::ColorBody, pixel::Color};
 
-use super::{WINDOW_HEIGHT, WINDOW_WIDTH};
+use super::{LOGICAL_WINDOW_HEIGHT, LOGICAL_WINDOW_WIDTH};
 
 pub fn draw_pixel(x: i32, y: i32, color: Color, frame: &mut [u8]) {
-    if x >= 0 && x < (4 * WINDOW_WIDTH as i32) && y >= 0 && y < WINDOW_HEIGHT as i32 {
-        let i = ((WINDOW_WIDTH as i32 * y + x) * 4) as usize;
+    if x >= 0 && x < (4 * LOGICAL_WINDOW_WIDTH as i32) && y >= 0 && y < LOGICAL_WINDOW_HEIGHT as i32
+    {
+        let i = ((LOGICAL_WINDOW_WIDTH as i32 * y + x) * 4) as usize;
         frame[i..i + 4].copy_from_slice(color.as_bytes());
     }
 }
@@ -12,7 +13,7 @@ pub fn draw_pixel(x: i32, y: i32, color: Color, frame: &mut [u8]) {
 pub fn draw_rect(x: i32, y: i32, width: i32, height: i32, color: Color, frame: &mut [u8]) {
     for i in y..=y + height {
         for j in x..=x + width {
-            let n = (WINDOW_WIDTH as i32 * i + j) as usize;
+            let n = (LOGICAL_WINDOW_WIDTH as i32 * i + j) as usize;
             if (i == y || i == y + height) && (j >= x && j <= x + width) {
                 frame[n..n + 4].copy_from_slice(color.as_bytes());
             }
