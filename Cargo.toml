@@ -23,3 +23,6 @@ nalgebra-glm = "0.18.0"
 pixels = "0.13"
 winit = "0.28"
 winit_input_helper = "0.14"
+
+[profile.release]
+debug = true

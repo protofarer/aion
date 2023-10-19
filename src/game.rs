@@ -11,7 +11,7 @@ use winit_input_helper::WinitInputHelper;
 
 use crate::draw::{draw_line, draw_pixel};
 use crate::gui::Framework;
-use crate::pixel::Color;
+use crate::pixel::{Color, BLACK};
 use crate::{dev, game, log_error, WINDOW_HEIGHT, WINDOW_WIDTH}; // little function in main.rs
 use legion::*;
 use nalgebra_glm::Vec2;
@@ -103,6 +103,8 @@ pub struct Game {
     update_schedule: Schedule,
     resources: Resources,
     key_states: HashMap<VirtualKeyCode, Option<ButtonState>>,
+    pub pixels: Pixels,
+    pub input: WinitInputHelper,
 }
 
 impl GetLoopState for Game {
@@ -112,7 +114,7 @@ impl GetLoopState for Game {
 }
 
 impl Game {
-    pub fn new() -> Result<Self, anyhow::Error> {
+    pub fn new(pixels: Pixels) -> Result<Self, anyhow::Error> {
         dev!("INIT start");
 
         // todo 1. pass config struct
@@ -150,10 +152,13 @@ impl Game {
             update_schedule,
             resources,
             key_states: HashMap::new(),
+            pixels,
+            input: WinitInputHelper::new(),
         })
     }
 
-    pub fn process_input(&mut self, input: &WinitInputHelper) {
+    pub fn process_input(&mut self) {
+        let mut input = &self.input;
         if input.key_pressed(VirtualKeyCode::Escape) {
             if *self.get_loopstate() != LoopState::Stopped {
                 self.loop_controller.stop();
@@ -176,7 +181,7 @@ impl Game {
         if input.key_pressed(VirtualKeyCode::Grave) {
             self.is_debug_on = !self.is_debug_on;
         }
-        self.process_player_control_keys(input);
+        self.process_player_control_keys();
         // self.handle_key_up(keys_down);
     }
 
@@ -235,7 +240,7 @@ impl Game {
                 is_thrusting: false,
             },
             MovementStats {
-                speed: 1000f32,
+                speed: 500f32,
                 turn_rate: 0.2f32,
                 decel: 0.5f32,
             },
@@ -284,7 +289,11 @@ impl Game {
             .execute(&mut self.world, &mut self.resources);
     }
 
-    pub fn draw(&mut self, frame: &mut [u8]) {
+    pub fn draw(&mut self) {
+        let mut frame = self.pixels.frame_mut();
+        // for (i, pixel) in frame.chunks_exact_mut(4).enumerate() {
+        //     pixel.copy_from_slice(BLACK.as_bytes());
+        // }
         let mut query = <(&Transform, &CollisionArea, &ColorBody)>::query();
 
         for (transform, _collision_area, colorbody) in query.iter(&self.world) {
@@ -309,12 +318,14 @@ impl Game {
         // Logger::dbg("Destroy game");
     }
 
-    fn process_player_control_keys(&mut self, input: &WinitInputHelper) {
+    fn process_player_control_keys(&mut self) {
+        let input = &self.input;
         // HANDLE VALID SIMULTANEOUS MOVE KEYS
-        self.set_rotational_input(input);
+        self.set_rotational_input();
     }
 
-    fn set_rotational_input(&mut self, input: &WinitInputHelper) {
+    fn set_rotational_input(&mut self) {
+        let input = &self.input;
         fn set_input_turn(turn: Option<Turn>, world: &mut World) {
             let mut query = <&mut RotationalInput>::query();
             for input in query.iter_mut(world) {

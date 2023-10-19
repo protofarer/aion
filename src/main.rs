@@ -8,11 +8,12 @@ mod pixel;
 mod systems;
 mod time;
 
-use std::{env, time::Instant};
+use std::{env, sync::Arc, time::Instant};
 
 use crate::game::Game;
 use error_iter::ErrorIter as _;
 use game::{Dt, GetLoopState, LoopState};
+use game_loop::game_loop;
 use gui::Framework;
 use log::{error, info};
 use pixel::{Color, BLACK};
@@ -51,8 +52,8 @@ fn init_gfx(
     window: &Window,
 ) -> Result<(Pixels, Framework), pixels::Error> {
     let (pixels, framework) = {
-        let window_size = window.inner_size();
         let scale_factor = window.scale_factor() as f32;
+        let window_size = window.inner_size();
         let surface_texture = SurfaceTexture::new(window_size.width, window_size.height, &window);
         let pixels = Pixels::new(WINDOW_WIDTH as u32, WINDOW_HEIGHT as u32, surface_texture)?;
         let framework = Framework::new(
@@ -106,7 +107,7 @@ fn run(
                 framework.resize(size.width, size.height);
             }
 
-            game.process_input(&input);
+            game.process_input();
 
             if *game.get_loopstate() == LoopState::Exiting {
                 *control_flow = ControlFlow::Exit;
@@ -120,9 +121,9 @@ fn run(
                 ////////////////////////////////////////////////////////////////////
                 let _dt = timer.tick();
                 println!("dt: {}", _dt.as_millis());
-                if *game.get_loopstate() == LoopState::Running {
-                    game.update();
-                }
+                // if *game.get_loopstate() == LoopState::Running {
+                //     game.update();
+                // }
                 ////////////////////////////////////////////////////////////////////
                 ////////////////////////////////////////////////////////////////////
                 window.request_redraw();
@@ -141,10 +142,10 @@ fn run(
                 }
 
                 // Mutate frame buffer
-                game.draw(pixels.frame_mut());
+                // game.draw(pixels.frame_mut());
 
                 // Prepare egui
-                framework.prepare(&window);
+                // framework.prepare(&window);
 
                 // Render everything together
                 let render_result = pixels.render_with(|encoder, render_target, context| {
@@ -152,7 +153,7 @@ fn run(
                     context.scaling_renderer.render(encoder, render_target);
 
                     // Render egui
-                    framework.render(encoder, render_target, context);
+                    // framework.render(encoder, render_target, context);
 
                     Ok(())
                 });
@@ -193,14 +194,105 @@ fn main() {
 
     let event_loop = EventLoop::new();
     let window = init_window(&event_loop);
+
     let (mut pixels, mut framework) = init_gfx(&event_loop, &window).unwrap();
     let mut input = WinitInputHelper::new();
 
     let mut ctx = Context::new();
-    let mut game = Game::new().unwrap_or_else(|e| {
+    let mut game = Game::new(pixels).unwrap_or_else(|e| {
         println!("{e}");
         std::process::exit(1);
     });
+    // run(event_loop, window, pixels, framework, input, ctx, game);
 
-    run(event_loop, window, pixels, framework, input, ctx, game);
+    game.setup();
+    game.loop_controller.run();
+    let window = Arc::new(window);
+    let mut timer = FrameTimer::new(60);
+
+    game_loop(
+        event_loop,
+        window,
+        game,
+        10 as u32,
+        0.5,
+        move |g| {
+            // Update the world
+            g.game.update();
+        },
+        move |g| {
+            let dt = timer.tick();
+            println!("fps: {}", timer.fps().round());
+            // Drawing
+            ////////////////////////////////////////////////////////////////////
+            // RENDER
+            ////////////////////////////////////////////////////////////////////
+            // Clear current rendering target with drawing color
+            // a faster clear?
+            let mut frame = g.game.pixels.frame_mut();
+            for pixel in frame.chunks_exact_mut(4) {
+                pixel.copy_from_slice(BLACK.as_bytes());
+            }
+            // g.game.draw();
+
+            // Mutate frame buffer
+            // game.draw(pixels.frame_mut());
+
+            // Prepare egui
+            // framework.prepare(&window);
+
+            // Render everything together
+            let render_result = g
+                .game
+                .pixels
+                .render_with(|encoder, render_target, context| {
+                    // Render the world texture
+                    context.scaling_renderer.render(encoder, render_target);
+
+                    // Render egui
+                    // framework.render(encoder, render_target, context);
+
+                    Ok(())
+                });
+
+            if let Err(err) = render_result {
+                log_error("pixels.render", err);
+                g.exit();
+                // *control_flow = ControlFlow::Exit;
+            }
+            ////////////////////////////////////////////////////////////////////
+            ////////////////////////////////////////////////////////////////////
+
+            // Sleep the main thread to limit drawing to the fixed time step.
+            // See: https://github.com/parasyte/pixels/issues/174
+
+            // let dt = TIME_STEP.as_secs_f64() - Time::now().sub(&g.current_instant());
+            // if dt > 0.0 {
+            //     std::thread::sleep(Duration::from_secs_f64(dt));
+            // }
+        },
+        |g, event| {
+            // Let winit_input_helper collect events to build its state.
+            if g.game.input.update(event) {
+                // Update controls
+                g.game.process_input();
+
+                // Close events
+                if g.game.input.key_pressed(VirtualKeyCode::Escape)
+                    || g.game.input.close_requested()
+                {
+                    g.game.loop_controller.exit();
+                    g.exit();
+                    return;
+                }
+                // Resize the window
+                if let Some(size) = g.game.input.window_resized() {
+                    if let Err(err) = g.game.pixels.resize_surface(size.width, size.height) {
+                        log_error("pixels.resize_surface", err);
+                        g.game.loop_controller.exit();
+                    }
+                }
+            }
+        },
+    );
 }
