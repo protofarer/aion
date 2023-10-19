@@ -10,10 +10,12 @@ use winit::event_loop::EventLoop;
 use winit::window::Window;
 use winit_input_helper::WinitInputHelper;
 
+use crate::draw::draw_circle;
 use crate::draw_bodies::*;
 use crate::geom::*;
 use crate::gui::Framework;
-use crate::pixel::{Color, BLACK, BLUE};
+use crate::pixel::*;
+use crate::time::Dt;
 use crate::{dev, game, log_error, INIT_DT, LOGICAL_WINDOW_HEIGHT, LOGICAL_WINDOW_WIDTH}; // little function in main.rs
 use legion::*;
 use nalgebra_glm::Vec2;
@@ -111,9 +113,9 @@ impl Game {
         });
 
         let update_schedule = Schedule::builder()
-            .add_system(process_input_system())
+            .add_system(process_rotational_input_system())
+            .add_system(process_translational_input_system())
             .flush()
-            .add_system(update_movement_state_system())
             .add_system(update_positions_system())
             .flush()
             .add_system(collision_system())
@@ -150,7 +152,7 @@ impl Game {
             RigidBody {
                 velocity: Vec2::new(0.0, 0.0),
             },
-            CollisionArea { w: 50.0, h: 50.0 },
+            CollisionArea { w: 20.0, h: 20.0 },
             ColorBody {
                 primary: Color::RGB(0, 255, 0),
                 secondary: Color::RGB(0, 0, 0),
@@ -167,68 +169,9 @@ impl Game {
         ));
 
         // BATCH ADD ENTS
-        fn gen_square() -> (Transform, RigidBody, CollisionArea, ColorBody) {
-            let mut rng = rand::thread_rng();
-            (
-                Transform {
-                    position: Vec2::new(
-                        rng.gen::<f32>() * LOGICAL_WINDOW_WIDTH,
-                        rng.gen::<f32>() * LOGICAL_WINDOW_HEIGHT,
-                    ),
-                    rotation: 0.0,
-                    scale: Vec2::new(1.0, 1.0),
-                },
-                RigidBody {
-                    velocity: Vec2::new(rng.gen::<f32>() * 500.0, rng.gen::<f32>() * 500.0),
-                },
-                CollisionArea { w: 25.0, h: 25.0 },
-                ColorBody {
-                    primary: Color::RGB(255, 0, 0),
-                    secondary: Color::RGB(0, 0, 0),
-                },
-            )
-        }
-        fn gen_squares(n: i32) -> Vec<(Transform, RigidBody, CollisionArea, ColorBody)> {
-            let mut squares = vec![];
-            for i in 0..n {
-                squares.push(gen_square());
-            }
-            squares
-        }
-
-        // let _: &[Entity] = self.world.extend(vec![gen_square(), gen_square()]);
-        let _: &[Entity] = self.world.extend(gen_squares(25));
-
-        fn gen_particle() -> (Transform, RigidBody, CollisionArea, ColorBody) {
-            let mut rng = rand::thread_rng();
-            (
-                Transform {
-                    position: Vec2::new(
-                        rng.gen::<f32>() * LOGICAL_WINDOW_WIDTH,
-                        rng.gen::<f32>() * LOGICAL_WINDOW_HEIGHT,
-                    ),
-                    rotation: 0.0,
-                    scale: Vec2::new(1.0, 1.0),
-                },
-                RigidBody {
-                    velocity: Vec2::new(rng.gen::<f32>() * 1000.0, rng.gen::<f32>() * 1000.0),
-                },
-                CollisionArea { w: 1.0, h: 1.0 },
-                ColorBody {
-                    primary: Color::RGB(255, 0, 0),
-                    secondary: Color::RGB(0, 0, 0),
-                },
-            )
-        }
-        // there's a rusty way to populate a vector
-        fn gen_particles(n: i32) -> Vec<(Transform, RigidBody, CollisionArea, ColorBody)> {
-            let mut particles = vec![];
-            for i in 0..n {
-                particles.push(gen_particle());
-            }
-            particles
-        }
-        let _: &[Entity] = self.world.extend(gen_particles(100));
+        let _: &[Entity] = self.world.extend(gen_squares(12));
+        let _: &[Entity] = self.world.extend(gen_particles(1000));
+        let _: &[Entity] = self.world.extend(gen_circles(3));
 
         self.resources.insert(INIT_DT);
         dev!("SETUP fin");
@@ -303,7 +246,7 @@ impl Game {
         self.process_player_control_keys();
     }
 
-    pub fn update(&mut self, dt: Duration) {
+    pub fn update(&mut self, dt: Dt) {
         self.resources.insert(dt);
         self.update_schedule
             .execute(&mut self.world, &mut self.resources);
@@ -317,8 +260,8 @@ impl Game {
 
         let mut query = <(&Transform, &CollisionArea, &ColorBody, &RotationalInput)>::query();
 
-        for (transform, _collision_area, colorbody, rotational) in query.iter(&self.world) {
-            draw_ship(transform, colorbody, frame);
+        for (transform, collision_area, colorbody, rotational) in query.iter(&self.world) {
+            draw_ship(transform, collision_area, colorbody, frame);
         }
 
         // let mut query = <(&Transform, &CollisionArea, &ColorBody)>::query()
@@ -331,10 +274,18 @@ impl Game {
         for (transform, ca, colorbody) in query.iter(&self.world) {
             if ca.w == 1. {
                 draw_particle(transform, colorbody, frame);
+            } else if ca.w == 60. {
+                draw_circloid(transform, ca, colorbody, frame);
             } else {
                 draw_box(transform, colorbody, frame);
             }
         }
+
+        // black hole
+        draw_circle(frame, 200, 350, 60, WHITE);
+
+        // star
+        draw_circle(frame, 800, 100, 40, ORANGE);
     }
 
     pub fn destroy(&self) {
@@ -355,4 +306,91 @@ fn clear(frame: &mut [u8]) {
     for pixel in frame.chunks_exact_mut(4) {
         pixel.copy_from_slice(BLACK.as_bytes());
     }
+}
+
+fn gen_particle() -> (Transform, RigidBody, CollisionArea, ColorBody) {
+    let mut rng = rand::thread_rng();
+    (
+        Transform {
+            position: Vec2::new(
+                rng.gen::<f32>() * LOGICAL_WINDOW_WIDTH,
+                rng.gen::<f32>() * LOGICAL_WINDOW_HEIGHT,
+            ),
+            rotation: 0.0,
+            scale: Vec2::new(1.0, 1.0),
+        },
+        RigidBody {
+            velocity: Vec2::new(rng.gen::<f32>() * 1000.0, rng.gen::<f32>() * 1000.0),
+        },
+        CollisionArea { w: 1.0, h: 1.0 },
+        ColorBody {
+            primary: GREY,
+            secondary: Color::RGB(0, 0, 0),
+        },
+    )
+}
+// there's a rusty way to populate a vector
+fn gen_particles(n: i32) -> Vec<(Transform, RigidBody, CollisionArea, ColorBody)> {
+    let mut particles = vec![];
+    for i in 0..n {
+        particles.push(gen_particle());
+    }
+    particles
+}
+fn gen_square() -> (Transform, RigidBody, CollisionArea, ColorBody) {
+    let mut rng = rand::thread_rng();
+    (
+        Transform {
+            position: Vec2::new(
+                rng.gen::<f32>() * LOGICAL_WINDOW_WIDTH,
+                rng.gen::<f32>() * LOGICAL_WINDOW_HEIGHT,
+            ),
+            rotation: 0.0,
+            scale: Vec2::new(1.0, 1.0),
+        },
+        RigidBody {
+            velocity: Vec2::new(rng.gen::<f32>() * 500.0, rng.gen::<f32>() * 500.0),
+        },
+        CollisionArea { w: 25.0, h: 25.0 },
+        ColorBody {
+            primary: RED,
+            secondary: Color::RGB(0, 0, 0),
+        },
+    )
+}
+fn gen_squares(n: i32) -> Vec<(Transform, RigidBody, CollisionArea, ColorBody)> {
+    let mut squares = vec![];
+    for i in 0..n {
+        squares.push(gen_square());
+    }
+    squares
+}
+
+fn gen_circle() -> (Transform, RigidBody, CollisionArea, ColorBody) {
+    let mut rng = rand::thread_rng();
+    (
+        Transform {
+            position: Vec2::new(
+                rng.gen::<f32>() * LOGICAL_WINDOW_WIDTH,
+                rng.gen::<f32>() * LOGICAL_WINDOW_HEIGHT,
+            ),
+            rotation: 0.0,
+            scale: Vec2::new(1.0, 1.0),
+        },
+        RigidBody {
+            velocity: Vec2::new(rng.gen::<f32>() * 100.0, rng.gen::<f32>() * 100.0),
+        },
+        CollisionArea { w: 60.0, h: 60.0 },
+        ColorBody {
+            primary: Color::RGB(160, 160, 0),
+            secondary: Color::RGB(0, 0, 0),
+        },
+    )
+}
+fn gen_circles(n: i32) -> Vec<(Transform, RigidBody, CollisionArea, ColorBody)> {
+    let mut circles = vec![];
+    for i in 0..n {
+        circles.push(gen_circle());
+    }
+    circles
 }

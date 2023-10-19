@@ -2,6 +2,8 @@ use std::collections::VecDeque;
 use std::iter::Sum;
 use std::time;
 
+pub struct Dt(time::Duration);
+
 #[derive(Debug, Clone)]
 pub struct FrameLogger<T>
 where
@@ -80,13 +82,12 @@ impl FrameTimer {
         self.clear_log();
         self.frame_count = 0;
     }
-    pub fn tick(&mut self) -> time::Duration {
-        let now = time::Instant::now();
-        let dt = now - self.last_instant;
+    pub fn tick(&mut self) -> Dt {
+        let dt = self.last_instant.elapsed();
         self.frame_log.push(dt);
-        self.last_instant = now;
+        self.last_instant = time::Instant::now();
         self.frame_count += 1;
-        dt
+        Dt(dt)
     }
 }
 

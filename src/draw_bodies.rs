@@ -3,26 +3,33 @@ use crate::{
     LOGICAL_WINDOW_WIDTH,
 };
 
-pub fn draw_ship(transform: &Transform, colorbody: &ColorBody, frame: &mut [u8]) {
-    let r = 15.0;
+pub fn draw_ship(
+    transform: &Transform,
+    ca: &CollisionArea,
+    colorbody: &ColorBody,
+    frame: &mut [u8],
+) {
+    // r is canonical draw length, half a side of collision square
+    let r = ca.w / 2.0;
 
     let x = transform.position.x;
     let y = transform.position.y;
 
-    let mut x1 = x - r / 2.0;
-    let mut y1 = y - r / 2.0;
+    let mut x1 = x;
+    let mut y1 = y;
+
+    // notch
+    let mut xm = x + r * 0.5;
+    let mut ym = y + r;
 
     let mut x2 = x1;
-    let mut y2 = y + r / 2.0;
+    let mut y2 = y + r * 2.0;
 
-    let mut x3 = x + r;
-    let mut y3 = y;
+    let mut x3 = x + r * 2.0;
+    let mut y3 = y + r;
 
-    let mut xm = x + r / 20.0;
-    let mut ym = y;
-
-    let cx = (x1 + x2 + x3) / 3.0;
-    let cy = (y1 + y2 + y3) / 3.0;
+    let cx = x + r;
+    let cy = y + r;
 
     (x1, y1) = rotate_point(x1, y1, transform.rotation, cx, cy);
     (xm, ym) = rotate_point(xm, ym, transform.rotation, cx, cy);
@@ -164,4 +171,20 @@ pub fn draw_boundary(frame: &mut [u8]) {
     draw_line(width, 0, width, height, color, frame);
     draw_line(width, height, 0, height, color, frame);
     draw_line(0, height, 0, 0, color, frame);
+}
+
+pub fn draw_circloid(
+    transform: &Transform,
+    collision_area: &CollisionArea,
+    colorbody: &ColorBody,
+    frame: &mut [u8],
+) {
+    let r = collision_area.w / 2.0;
+    draw_circle(
+        frame,
+        (transform.position.x + r) as i32,
+        (transform.position.y + r) as i32,
+        r as i32,
+        colorbody.primary,
+    );
 }

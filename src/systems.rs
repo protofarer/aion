@@ -2,6 +2,7 @@ use std::time::Duration;
 
 use crate::components::*;
 use crate::game::WindowDims;
+use crate::time::Dt;
 use legion::*;
 use nalgebra_glm::Vec2;
 
@@ -18,7 +19,7 @@ pub fn update_positions(
 }
 
 #[system(for_each)]
-pub fn update_movement_state(
+pub fn process_translational_input(
     input: &TranslationalInput,
     movestats: &MovementStats,
     rigidbody: &mut RigidBody,
@@ -102,7 +103,7 @@ pub fn collision(
 
 // ? how to have this run only when input changes?
 #[system(for_each)]
-pub fn process_input(
+pub fn process_rotational_input(
     rotational_input: &RotationalInput,
     move_stats: &MovementStats,
     transform: &mut Transform,
