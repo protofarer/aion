@@ -45,20 +45,18 @@ pub struct FrameTimer {
     init_instant: time::Instant,
     frame_log: FrameLogger<time::Duration>,
     frame_count: usize,
-    intended_frame_rate: u32,
 }
 
 const N_FRAME_LOGS: usize = 200;
 
 impl FrameTimer {
-    pub fn new(intended_frame_rate: u32) -> FrameTimer {
+    pub fn new() -> FrameTimer {
         let init_dt = time::Duration::from_millis(16);
         FrameTimer {
             init_instant: time::Instant::now(),
             last_instant: time::Instant::now(),
             frame_log: FrameLogger::new(N_FRAME_LOGS, init_dt),
             frame_count: 0,
-            intended_frame_rate,
         }
     }
     pub fn avg_dt(&self) -> time::Duration {
@@ -94,7 +92,7 @@ impl FrameTimer {
 
 impl Default for FrameTimer {
     fn default() -> Self {
-        Self::new(16)
+        Self::new()
     }
 }
 

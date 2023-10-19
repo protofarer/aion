@@ -1,14 +1,20 @@
+use std::time::Duration;
+
 use crate::components::*;
-use crate::game::{Dt, WindowDims};
+use crate::game::WindowDims;
 use legion::*;
 use nalgebra_glm::Vec2;
 
 #[system(for_each)]
-pub fn update_positions(transform: &mut Transform, rigidbody: &mut RigidBody, #[resource] dt: &Dt) {
+pub fn update_positions(
+    transform: &mut Transform,
+    rigidbody: &mut RigidBody,
+    #[resource] dt: &Duration,
+) {
     // transform.position.x += rigidbody.velocity.x * dt.0;
     // transform.position.y += rigidbody.velocity.y * dt.0;
     // ! does this work?
-    transform.position += rigidbody.velocity * dt.0;
+    transform.position += rigidbody.velocity * dt.as_secs_f32();
 }
 
 #[system(for_each)]
