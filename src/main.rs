@@ -73,6 +73,7 @@ fn init_gfx(
             LOGICAL_WINDOW_HEIGHT as u32,
             surface_texture,
         )?;
+
         let framework = Framework::new(
             event_loop,
             window_size.width,
@@ -80,8 +81,10 @@ fn init_gfx(
             scale_factor,
             &pixels,
         );
+
         (pixels, framework)
     };
+
     Ok((pixels, framework))
 }
 
@@ -138,7 +141,7 @@ fn main() {
                 g.game.draw();
 
                 // Prepare egui
-                g.game.framework.prepare(&g.window);
+                g.game.framework.prepare(&g.window, g.game.get_runstate());
 
                 // Render everything together
                 let render_result = g
@@ -171,11 +174,18 @@ fn main() {
             // }
         },
         |g, event| {
+            match event {
+                Event::WindowEvent { event, .. } => {
+                    g.game.framework.handle_event(event);
+                }
+                _ => {}
+            }
+
             if g.game.input.update(event) {
                 g.game.process_input();
 
-                if g.game.input.key_pressed(VirtualKeyCode::Escape)
-                    || g.game.input.close_requested()
+                if g.game.input.close_requested()
+                    || g.game.input.key_pressed(VirtualKeyCode::Escape)
                 {
                     g.game.loop_controller.exit();
                     g.exit();

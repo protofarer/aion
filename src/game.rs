@@ -223,11 +223,6 @@ impl Game {
 
     pub fn process_input(&mut self) {
         let mut input = &self.input;
-        if input.key_pressed(VirtualKeyCode::Escape) {
-            if self.get_runstate() != RunState::Stopped {
-                self.loop_controller.stop();
-            }
-        }
         if input.key_pressed(VirtualKeyCode::P) {
             if self.get_runstate() == RunState::Running {
                 self.loop_controller.pause();
