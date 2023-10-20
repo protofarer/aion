@@ -134,32 +134,8 @@ pub fn draw_box(transform: &Transform, colorbody: &ColorBody, frame: &mut [u8]) 
 }
 
 pub fn draw_particle(transform: &Transform, colorbody: &ColorBody, frame: &mut [u8]) {
-    // let r = 15.0;
-
     let x = transform.position.x;
     let y = transform.position.y;
-
-    // let mut x1 = x;
-    // let mut y1 = y;
-
-    // let mut x2 = x1 + r;
-    // let mut y2 = y1;
-
-    // let mut x3 = x2;
-    // let mut y3 = y2 + r;
-
-    // let mut x4 = x1;
-    // let mut y4 = y3;
-
-    // let cx = x1 + (r / 2.0);
-    // let cy = y1 + (r / 2.0);
-
-    // (x1, y1) = rotate_point(x1, y1, transform.rotation, cx, cy);
-    // (x2, y2) = rotate_point(x2, y2, transform.rotation, cx, cy);
-    // (x3, y3) = rotate_point(x3, y3, transform.rotation, cx, cy);
-    // (x4, y4) = rotate_point(x4, y4, transform.rotation, cx, cy);
-
-    // Draw the triangle
     draw_pixel(x as i32, y as i32, colorbody.primary, frame);
 }
 
