@@ -15,7 +15,7 @@ use crate::draw_bodies::*;
 use crate::geom::*;
 use crate::gui::Framework;
 use crate::pixel::*;
-use crate::time::Dt;
+use crate::time::{Dt, FrameTimer};
 use crate::{dev, game, log_error, INIT_DT, LOGICAL_WINDOW_HEIGHT, LOGICAL_WINDOW_WIDTH}; // little function in main.rs
 use legion::*;
 use nalgebra_glm::Vec2;
@@ -87,6 +87,8 @@ pub struct Game {
     pub pixels: Pixels,
     pub framework: Framework,
     pub input: WinitInputHelper,
+    pub render_timer: FrameTimer,
+    pub update_timer: FrameTimer,
 }
 
 impl GetRunState for Game {
@@ -125,6 +127,9 @@ impl Game {
         // let render_schedule = Schedule::builder().add_system(render_system()).build();
 
         let loop_controller = RunController::new();
+
+        let mut render_timer = FrameTimer::new();
+        let mut update_timer = FrameTimer::new();
         dev!("INIT fin");
 
         Ok(Self {
@@ -137,6 +142,8 @@ impl Game {
             pixels,
             framework,
             input: WinitInputHelper::new(),
+            render_timer,
+            update_timer,
         })
     }
 

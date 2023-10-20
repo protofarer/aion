@@ -67,7 +67,7 @@ impl FrameTimer {
     }
     pub fn fps(&self) -> f64 {
         let avg_dt = self.avg_dt();
-        1.0 / avg_dt.as_secs_f64()
+        (1.0 / avg_dt.as_secs_f64()).round()
     }
     pub fn count_frames(&self) -> usize {
         self.frame_count

@@ -81,7 +81,7 @@ impl Framework {
     }
 
     /// Prepare egui.
-    pub(crate) fn prepare(&mut self, window: &Window, game_state: RunState) {
+    pub(crate) fn prepare(&mut self, window: &Window, game_state: GuiGameState) {
         // Run the egui frame and create all paint jobs to prepare for rendering.
         let raw_input = self.egui_state.take_egui_input(window);
         let output = self.egui_ctx.run(raw_input, |egui_ctx| {
@@ -153,7 +153,21 @@ impl Gui {
     }
 
     /// Create the UI using egui.
-    fn ui(&mut self, ctx: &Context, game_state: RunState) {
+    fn ui(&mut self, ctx: &Context, game_state: GuiGameState) {
+        let run_state = match game_state.run_state {
+            RunState::Running => "running",
+            RunState::Exiting => "exiting",
+            RunState::Paused => "paused",
+            RunState::Stopped => "stopped",
+        };
+
+        let fps_healthy: String;
+        if game_state.render_fps < 60.0 {
+            fps_healthy = format!("☑");
+        } else {
+            fps_healthy = format!("🗙");
+        }
+
         egui::TopBottomPanel::top("menubar_container").show(ctx, |ui| {
             egui::menu::bar(ui, |ui| {
                 ui.menu_button("File", |ui| {
@@ -165,30 +179,38 @@ impl Gui {
                         self.window_open = false;
                         ui.close_menu();
                     }
+                });
+                ui.horizontal(|ui| {
+                    ui.label(run_state);
+                    ui.label(format!(
+                        "render_fps:{}{}",
+                        game_state.render_fps, fps_healthy
+                    ));
+                    ui.label(format!("update_fps:{}", game_state.update_fps));
                 })
             });
         });
 
-        let run_state = match game_state {
-            RunState::Running => "running",
-            RunState::Exiting => "exiting",
-            RunState::Paused => "paused",
-            RunState::Stopped => "stopped",
-        };
+        // egui::Window::new("Hola")
+        //     .open(&mut self.window_open)
+        //     .show(ctx, |ui| {
+        //         ui.label("This example demonstrates using egui with pixels.");
+        //         ui.label("Made with 💖 in San Francisco!");
 
-        egui::Window::new(run_state)
-            .open(&mut self.window_open)
-            .show(ctx, |ui| {
-                ui.label("This example demonstrates using egui with pixels.");
-                ui.label("Made with 💖 in San Francisco!");
+        //         ui.separator();
 
-                ui.separator();
-
-                ui.horizontal(|ui| {
-                    ui.spacing_mut().item_spacing.x /= 2.0;
-                    ui.label("Learn more about egui at");
-                    ui.hyperlink("https://docs.rs/egui");
-                });
-            });
+        //         ui.horizontal(|ui| {
+        //             ui.spacing_mut().item_spacing.x /= 2.0;
+        //             ui.label("Learn more about egui at");
+        //             ui.hyperlink("https://docs.rs/egui");
+        //         });
+        //     });
     }
+}
+
+#[derive(Copy, Clone)]
+pub struct GuiGameState {
+    pub run_state: RunState,
+    pub render_fps: f64,
+    pub update_fps: f64,
 }

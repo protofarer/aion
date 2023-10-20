@@ -15,7 +15,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use crate::game::Game;
+use crate::{game::Game, gui::GuiGameState};
 use error_iter::ErrorIter as _;
 use game::{GetRunState, RunState};
 use game_loop::game_loop;
@@ -115,8 +115,6 @@ fn main() {
     game.setup();
     game.loop_controller.run();
     let window = Arc::new(window);
-    let mut render_timer = FrameTimer::new();
-    let mut update_timer = FrameTimer::new();
 
     game_loop(
         event_loop,
@@ -126,23 +124,30 @@ fn main() {
         MAX_FRAME_TIME,
         move |g| {
             if g.game.get_runstate() == RunState::Running {
-                let dt = update_timer.tick();
-                println!("update fps: {}", update_timer.fps().round());
+                let dt = g.game.update_timer.tick();
+                // update_timer.fps().round();
+                // println!("update fps: {}", update_timer.fps().round());
                 g.game.update(dt);
             }
         },
         move |g| {
             if g.game.get_runstate() != RunState::Stopped {
-                let _ = render_timer.tick();
-                println!("render fps: {}", render_timer.fps().round());
+                let _ = g.game.render_timer.tick();
+                // println!("render fps: {}", render_timer.fps().round());
                 ////////////////////////////////////////////////////////////////////
                 // RENDER
                 ////////////////////////////////////////////////////////////////////
                 g.game.draw();
 
                 // Prepare egui
-                g.game.framework.prepare(&g.window, g.game.get_runstate());
 
+                let gui_game_state = GuiGameState {
+                    run_state: g.game.get_runstate(),
+                    render_fps: g.game.render_timer.fps(),
+                    update_fps: g.game.update_timer.fps(),
+                };
+
+                g.game.framework.prepare(&g.window, gui_game_state);
                 // Render everything together
                 let render_result = g
                     .game
