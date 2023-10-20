@@ -8,7 +8,7 @@ use winit::event_loop::EventLoopWindowTarget;
 use winit::window::Window;
 
 /// Manages all state required for rendering egui over `Pixels`.
-pub(crate) struct Framework {
+pub struct Framework {
     // State for egui.
     egui_ctx: Context,
     egui_state: egui_winit::State,
@@ -148,30 +148,30 @@ impl Gui {
 
     /// Create the UI using egui.
     fn ui(&mut self, ctx: &Context) {
-        // egui::TopBottomPanel::top("menubar_container").show(ctx, |ui| {
-        //     egui::menu::bar(ui, |ui| {
-        //         ui.menu_button("File", |ui| {
-        //             if ui.button("About...").clicked() {
-        //                 self.window_open = true;
-        //                 ui.close_menu();
-        //             }
-        //         })
-        //     });
-        // });
+        egui::TopBottomPanel::top("menubar_container").show(ctx, |ui| {
+            egui::menu::bar(ui, |ui| {
+                ui.menu_button("File", |ui| {
+                    if ui.button("About...").clicked() {
+                        self.window_open = true;
+                        ui.close_menu();
+                    }
+                })
+            });
+        });
 
-        // egui::Window::new("Hello, egui!")
-        //     .open(&mut self.window_open)
-        //     .show(ctx, |ui| {
-        //         ui.label("This example demonstrates using egui with pixels.");
-        //         ui.label("Made with 💖 in San Francisco!");
+        egui::Window::new("Hello, egui!")
+            .open(&mut self.window_open)
+            .show(ctx, |ui| {
+                ui.label("This example demonstrates using egui with pixels.");
+                ui.label("Made with 💖 in San Francisco!");
 
-        //         ui.separator();
+                ui.separator();
 
-        //         ui.horizontal(|ui| {
-        //             ui.spacing_mut().item_spacing.x /= 2.0;
-        //             ui.label("Learn more about egui at");
-        //             ui.hyperlink("https://docs.rs/egui");
-        //         });
-        //     });
+                ui.horizontal(|ui| {
+                    ui.spacing_mut().item_spacing.x /= 2.0;
+                    ui.label("Learn more about egui at");
+                    ui.hyperlink("https://docs.rs/egui");
+                });
+            });
     }
 }

@@ -104,7 +104,7 @@ fn main() {
     let (mut pixels, mut framework) = init_gfx(&event_loop, &window).unwrap();
     let mut input = WinitInputHelper::new();
 
-    let mut game = Game::new(pixels).unwrap_or_else(|e| {
+    let mut game = Game::new(pixels, framework).unwrap_or_else(|e| {
         println!("{e}");
         std::process::exit(1);
     });
@@ -122,38 +122,42 @@ fn main() {
         UPDATES_PER_SECOND,
         MAX_FRAME_TIME,
         move |g| {
-            let dt = update_timer.tick();
-            println!("update rate: {}", update_timer.fps().round());
-            g.game.update(dt);
+            if g.game.get_runstate() == RunState::Running {
+                let dt = update_timer.tick();
+                println!("update fps: {}", update_timer.fps().round());
+                g.game.update(dt);
+            }
         },
         move |g| {
-            let _ = render_timer.tick();
-            println!("render rate: {}", render_timer.fps().round());
-            ////////////////////////////////////////////////////////////////////
-            // RENDER
-            ////////////////////////////////////////////////////////////////////
-            g.game.draw();
+            if g.game.get_runstate() != RunState::Stopped {
+                let _ = render_timer.tick();
+                println!("render fps: {}", render_timer.fps().round());
+                ////////////////////////////////////////////////////////////////////
+                // RENDER
+                ////////////////////////////////////////////////////////////////////
+                g.game.draw();
 
-            // Prepare egui
-            // framework.prepare(&window);
+                // Prepare egui
+                g.game.framework.prepare(&g.window);
 
-            // Render everything together
-            let render_result = g
-                .game
-                .pixels
-                .render_with(|encoder, render_target, context| {
-                    // Render the world texture
-                    context.scaling_renderer.render(encoder, render_target);
+                // Render everything together
+                let render_result = g
+                    .game
+                    .pixels
+                    .render_with(|encoder, render_target, context| {
+                        // Render the world texture
+                        context.scaling_renderer.render(encoder, render_target);
 
-                    // Render egui
-                    // framework.render(encoder, render_target, context);
+                        // Render egui
+                        g.game.framework.render(encoder, render_target, context);
 
-                    Ok(())
-                });
+                        Ok(())
+                    });
 
-            if let Err(err) = render_result {
-                log_error("pixels.render", err);
-                g.exit();
+                if let Err(err) = render_result {
+                    log_error("pixels.render", err);
+                    g.exit();
+                }
             }
             ////////////////////////////////////////////////////////////////////
             ////////////////////////////////////////////////////////////////////
@@ -170,7 +174,6 @@ fn main() {
             if g.game.input.update(event) {
                 g.game.process_input();
 
-                // Close events
                 if g.game.input.key_pressed(VirtualKeyCode::Escape)
                     || g.game.input.close_requested()
                 {
@@ -179,13 +182,17 @@ fn main() {
                     return;
                 }
 
-                // Resize the window
+                if let Some(scale_factor) = g.game.input.scale_factor() {
+                    g.game.framework.scale_factor(scale_factor);
+                }
+
                 if let Some(size) = g.game.input.window_resized() {
                     if let Err(err) = g.game.pixels.resize_surface(size.width, size.height) {
                         log_error("pixels.resize_surface", err);
                         g.game.loop_controller.exit();
                         g.exit()
                     }
+                    g.game.framework.resize(size.width, size.height);
                 }
             }
         },

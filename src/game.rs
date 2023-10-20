@@ -39,7 +39,7 @@ enum ButtonState {
 // [init] => Stopped => [run] => Running => [input: pause] => Paused => [input: stop]
 // => Stopped => [input: pause] => (no effect)Stopped => [input: start/resume] => Resuming => Running => [input: pause]
 // => Paused => [input: unpause] => Running
-#[derive(PartialEq)]
+#[derive(PartialEq, Copy, Clone)]
 pub enum RunState {
     Running, // Update and render
     Paused,  // No update
@@ -68,13 +68,13 @@ impl RunController {
         dev!("Game Exiting");
         self.0 = RunState::Exiting;
     }
-    pub fn get_state(&self) -> &RunState {
-        &self.0
+    pub fn get_state(&self) -> RunState {
+        self.0
     }
 }
 
 pub trait GetRunState {
-    fn get_runstate(&self) -> &RunState;
+    fn get_runstate(&self) -> RunState;
 }
 
 pub struct Game {
@@ -85,17 +85,18 @@ pub struct Game {
     resources: Resources,
     key_states: HashMap<VirtualKeyCode, Option<ButtonState>>,
     pub pixels: Pixels,
+    pub framework: Framework,
     pub input: WinitInputHelper,
 }
 
 impl GetRunState for Game {
-    fn get_runstate(&self) -> &RunState {
+    fn get_runstate(&self) -> RunState {
         self.loop_controller.get_state()
     }
 }
 
 impl Game {
-    pub fn new(pixels: Pixels) -> Result<Self, anyhow::Error> {
+    pub fn new(pixels: Pixels, framework: Framework) -> Result<Self, anyhow::Error> {
         dev!("INIT start");
 
         // todo 1. pass config struct
@@ -134,6 +135,7 @@ impl Game {
             resources,
             key_states: HashMap::new(),
             pixels,
+            framework,
             input: WinitInputHelper::new(),
         })
     }
@@ -197,7 +199,7 @@ impl Game {
             }
         }
 
-        if *self.loop_controller.get_state() == RunState::Running {
+        if self.loop_controller.get_state() == RunState::Running {
             // HANDLE SINGLE MOVE KEYS
             if input.key_pressed(VirtualKeyCode::D) || input.key_held(VirtualKeyCode::D) {
                 set_input_turn(Some(Turn::Right), &mut self.world);
@@ -222,21 +224,21 @@ impl Game {
     pub fn process_input(&mut self) {
         let mut input = &self.input;
         if input.key_pressed(VirtualKeyCode::Escape) {
-            if *self.get_runstate() != RunState::Stopped {
+            if self.get_runstate() != RunState::Stopped {
                 self.loop_controller.stop();
             }
         }
         if input.key_pressed(VirtualKeyCode::P) {
-            if *self.get_runstate() == RunState::Running {
+            if self.get_runstate() == RunState::Running {
                 self.loop_controller.pause();
-            } else if *self.get_runstate() == RunState::Paused {
+            } else if self.get_runstate() == RunState::Paused {
                 self.loop_controller.run();
             }
         }
         if input.key_pressed(VirtualKeyCode::Semicolon) {
-            if *self.get_runstate() == RunState::Stopped {
+            if self.get_runstate() == RunState::Stopped {
                 self.loop_controller.run();
-            } else if *self.get_runstate() != RunState::Stopped {
+            } else if self.get_runstate() != RunState::Stopped {
                 self.loop_controller.stop();
             }
         }
