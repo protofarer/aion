@@ -8,8 +8,8 @@ use nalgebra_glm::Vec2;
 
 #[system(for_each)]
 pub fn update_positions(
-    transform: &mut Transform,
-    rigidbody: &mut RigidBody,
+    transform: &mut TransformCpt,
+    rigidbody: &mut RigidBodyCpt,
     #[resource] dt: &Duration,
 ) {
     // transform.position.x += rigidbody.velocity.x * dt.0;
@@ -20,9 +20,9 @@ pub fn update_positions(
 
 #[system(for_each)]
 pub fn process_translational_input(
-    input: &TranslationalInput,
-    movestats: &MovementStats,
-    rigidbody: &mut RigidBody,
+    input: &TranslationalInputCpt,
+    movestats: &MovementStatsCpt,
+    rigidbody: &mut RigidBodyCpt,
 ) {
     match input.direction {
         Some(Direction::E) => {
@@ -73,9 +73,9 @@ pub fn process_translational_input(
 
 #[system(for_each)]
 pub fn collision(
-    transform: &mut Transform,
-    rigidbody: &mut RigidBody,
-    collision_area: &CollisionArea,
+    transform: &mut TransformCpt,
+    rigidbody: &mut RigidBodyCpt,
+    collision_area: &CollisionAreaCpt,
     #[resource] window_dims: &WindowDims,
 ) {
     if transform.position.x + collision_area.w as f32 >= window_dims.w as f32
@@ -104,10 +104,10 @@ pub fn collision(
 // ? how to have this run only when input changes?
 #[system(for_each)]
 pub fn process_rotational_input(
-    rotational_input: &RotationalInput,
-    move_stats: &MovementStats,
-    transform: &mut Transform,
-    rigidbody: &mut RigidBody,
+    rotational_input: &RotationalInputCpt,
+    move_stats: &MovementStatsCpt,
+    transform: &mut TransformCpt,
+    rigidbody: &mut RigidBodyCpt,
 ) {
     match rotational_input.turn_sign {
         Some(Turn::Right) => {
@@ -132,4 +132,15 @@ pub fn process_rotational_input(
             rigidbody.velocity = Vec2::default();
         }
     }
+}
+
+#[system(for_each)]
+pub fn projectile_emission(
+    pem: &ProjectileEmitter,
+    proj: &Projectile,
+    transform: &TransformCpt,
+    rigidbody: &RigidBodyCpt,
+) {
+    // todo how to emit projectile on key press (player.is_firing_primary)
+    // only fire if cooldown is up
 }

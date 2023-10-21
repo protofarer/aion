@@ -3,12 +3,12 @@ use nalgebra_glm::Vec2;
 use std::time;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct Transform {
+pub struct TransformCpt {
     pub position: Vec2,
     pub rotation: f32,
     pub scale: Vec2,
 }
-impl Transform {
+impl TransformCpt {
     fn new() -> Self {
         Self {
             position: Vec2::new(100., 100.),
@@ -19,10 +19,10 @@ impl Transform {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct RigidBody {
+pub struct RigidBodyCpt {
     pub velocity: Vec2,
 }
-impl RigidBody {
+impl RigidBodyCpt {
     fn new() -> Self {
         Self {
             velocity: Vec2::new(100., 0.),
@@ -31,16 +31,16 @@ impl RigidBody {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct CollisionArea {
+pub struct CollisionAreaCpt {
     pub w: f32,
     pub h: f32,
 }
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct ColorBody {
+pub struct ColorBodyCpt {
     pub primary: Color,
     pub secondary: Color,
 }
-impl ColorBody {
+impl ColorBodyCpt {
     fn new() -> Self {
         Self {
             primary: WHITE,
@@ -56,11 +56,11 @@ pub enum Turn {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct RotationalInput {
+pub struct RotationalInputCpt {
     pub turn_sign: Option<Turn>,
     pub is_thrusting: bool,
 }
-impl RotationalInput {
+impl RotationalInputCpt {
     fn new() -> Self {
         Self {
             turn_sign: None,
@@ -70,11 +70,11 @@ impl RotationalInput {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct MovementStats {
+pub struct MovementStatsCpt {
     pub speed: f32,
     pub turn_rate: f32,
 }
-impl MovementStats {
+impl MovementStatsCpt {
     fn new() -> Self {
         Self {
             speed: 100.0,
@@ -84,25 +84,38 @@ impl MovementStats {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct TranslationalInput {
+pub struct TranslationalInputCpt {
     pub direction: Option<Direction>,
 }
-impl TranslationalInput {
+impl TranslationalInputCpt {
     fn new() -> Self {
         Self { direction: None }
     }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct CraftState {
+pub struct CraftStateCpt {
     pub is_firing_primary: bool,
     pub is_firing_secondary: bool,
 }
-impl CraftState {
+impl CraftStateCpt {
     fn new() -> Self {
         Self {
             is_firing_primary: false,
             is_firing_secondary: false,
+        }
+    }
+}
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct MindStateCpt {
+    pub is_sensing: bool,
+    pub is_using_primary: bool,
+}
+impl MindStateCpt {
+    fn new() -> Self {
+        Self {
+            is_sensing: false,
+            is_using_primary: false,
         }
     }
 }
@@ -120,7 +133,7 @@ pub enum Direction {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct ProjectileEmitterComponent {
+pub struct ProjectileEmitter {
     projectile_velocity: nalgebra_glm::Vec2,
     repeat_frequency: i32,
     projectile_duration: i32,
@@ -129,7 +142,7 @@ pub struct ProjectileEmitterComponent {
     last_emission_time: time::Instant,
 }
 
-impl ProjectileEmitterComponent {
+impl ProjectileEmitter {
     fn new() -> Self {
         Self {
             projectile_velocity: Vec2::new(0., 0.),
@@ -138,6 +151,24 @@ impl ProjectileEmitterComponent {
             hit_damage: 10,
             is_friendly: false,
             last_emission_time: time::Instant::now(),
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Projectile {
+    is_friendly: bool,
+    hit_damage: i32,
+    duration: time::Instant,
+    start_time: time::Instant,
+}
+impl Projectile {
+    fn new() -> Self {
+        Self {
+            is_friendly: false,
+            hit_damage: 0,
+            duration: time::Instant::now(),
+            start_time: time::Instant::now(),
         }
     }
 }

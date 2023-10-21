@@ -4,9 +4,9 @@ use crate::{
 };
 
 pub fn draw_ship(
-    transform: &Transform,
-    ca: &CollisionArea,
-    colorbody: &ColorBody,
+    transform: &TransformCpt,
+    ca: &CollisionAreaCpt,
+    colorbody: &ColorBodyCpt,
     frame: &mut [u8],
 ) {
     // r is canonical draw length, half a side of collision square
@@ -71,7 +71,7 @@ pub fn draw_ship(
         frame,
     );
 }
-pub fn draw_box(transform: &Transform, colorbody: &ColorBody, frame: &mut [u8]) {
+pub fn draw_box(transform: &TransformCpt, colorbody: &ColorBodyCpt, frame: &mut [u8]) {
     let r = 15.0;
 
     let x = transform.position.x;
@@ -133,7 +133,7 @@ pub fn draw_box(transform: &Transform, colorbody: &ColorBody, frame: &mut [u8]) 
     );
 }
 
-pub fn draw_particle(transform: &Transform, colorbody: &ColorBody, frame: &mut [u8]) {
+pub fn draw_particle(transform: &TransformCpt, colorbody: &ColorBodyCpt, frame: &mut [u8]) {
     let x = transform.position.x;
     let y = transform.position.y;
     draw_pixel(x as i32, y as i32, colorbody.primary, frame);
@@ -150,9 +150,9 @@ pub fn draw_boundary(frame: &mut [u8]) {
 }
 
 pub fn draw_circloid(
-    transform: &Transform,
-    collision_area: &CollisionArea,
-    colorbody: &ColorBody,
+    transform: &TransformCpt,
+    collision_area: &CollisionAreaCpt,
+    colorbody: &ColorBodyCpt,
     frame: &mut [u8],
 ) {
     let r = collision_area.w / 2.0;

@@ -10,7 +10,7 @@ use winit::event_loop::EventLoop;
 use winit::window::Window;
 use winit_input_helper::WinitInputHelper;
 
-use crate::draw::draw_circle;
+use crate::draw::{draw_circle, draw_rect};
 use crate::draw_bodies::*;
 use crate::geom::*;
 use crate::gui::Framework;
@@ -79,7 +79,8 @@ pub trait GetRunState {
 
 pub struct Game {
     pub loop_controller: RunController,
-    is_debug_on: bool,
+    dbg_is_on: bool,
+    dbg_is_drawing_collisionareas: bool,
     pub world: World,
     update_schedule: Schedule,
     resources: Resources,
@@ -134,7 +135,8 @@ impl Game {
 
         Ok(Self {
             loop_controller,
-            is_debug_on: false,
+            dbg_is_on: false,
+            dbg_is_drawing_collisionareas: false,
             world,
             update_schedule,
             resources,
@@ -153,24 +155,24 @@ impl Game {
         // PLAYER ENTITY
         // todo use tag
         let _ = self.world.push((
-            Transform {
+            TransformCpt {
                 position: Vec2::new(300.0, 300.0),
                 rotation: 0.0,
                 scale: Vec2::new(1.0, 1.0),
             },
-            RigidBody {
+            RigidBodyCpt {
                 velocity: Vec2::new(0.0, 0.0),
             },
-            CollisionArea { w: 20.0, h: 20.0 },
-            ColorBody {
+            CollisionAreaCpt { w: 20.0, h: 20.0 },
+            ColorBodyCpt {
                 primary: Color::RGB(0, 255, 0),
                 secondary: Color::RGB(0, 0, 0),
             },
-            RotationalInput {
+            RotationalInputCpt {
                 turn_sign: None,
                 is_thrusting: false,
             },
-            MovementStats {
+            MovementStatsCpt {
                 speed: 500f32,
                 turn_rate: 0.1f32,
             },
@@ -191,7 +193,7 @@ impl Game {
         if self.input.key_pressed(VirtualKeyCode::Space)
             || self.input.key_held(VirtualKeyCode::Space)
         {
-            let mut query = <&mut CraftState>::query();
+            let mut query = <&mut CraftStateCpt>::query();
             for state in query.iter_mut(&mut self.world) {
                 state.is_firing_primary = true;
             }
@@ -202,14 +204,14 @@ impl Game {
         let input = &self.input;
 
         fn set_input_turn(turn: Option<Turn>, world: &mut World) {
-            let mut query = <&mut RotationalInput>::query();
+            let mut query = <&mut RotationalInputCpt>::query();
             for input in query.iter_mut(world) {
                 input.turn_sign = turn;
             }
         }
 
         fn set_input_thrust(is_thrusting: bool, world: &mut World) {
-            let mut query = <&mut RotationalInput>::query();
+            let mut query = <&mut RotationalInputCpt>::query();
             for input in query.iter_mut(world) {
                 input.is_thrusting = is_thrusting;
             }
@@ -237,25 +239,32 @@ impl Game {
         }
     }
 
-    pub fn process_input(&mut self) {
-        let mut input = &self.input;
-        if input.key_pressed(VirtualKeyCode::P) {
+    fn process_dbg_keys(&mut self) {
+        if self.input.key_pressed(VirtualKeyCode::P) {
             if self.get_runstate() == RunState::Running {
                 self.loop_controller.pause();
             } else if self.get_runstate() == RunState::Paused {
                 self.loop_controller.run();
             }
         }
-        if input.key_pressed(VirtualKeyCode::Semicolon) {
+        if self.input.key_pressed(VirtualKeyCode::Semicolon) {
             if self.get_runstate() == RunState::Stopped {
                 self.loop_controller.run();
             } else if self.get_runstate() != RunState::Stopped {
                 self.loop_controller.stop();
             }
         }
-        if input.key_pressed(VirtualKeyCode::Grave) {
-            self.is_debug_on = !self.is_debug_on;
+        if self.input.key_pressed(VirtualKeyCode::Grave) {
+            self.dbg_is_on = !self.dbg_is_on;
         }
+        if self.input.key_pressed(VirtualKeyCode::Key1) {
+            self.dbg_is_drawing_collisionareas = !self.dbg_is_drawing_collisionareas;
+        }
+    }
+
+    pub fn process_input(&mut self) {
+        let mut input = &self.input;
+        self.process_dbg_keys();
         self.process_player_control_keys();
     }
 
@@ -265,16 +274,28 @@ impl Game {
             .execute(&mut self.world, &mut self.resources);
     }
 
-    pub fn draw(&mut self) {
+    pub fn render(&mut self) {
         let mut frame = self.pixels.frame_mut();
         clear(frame);
 
         draw_boundary(frame);
 
-        let mut query = <(&Transform, &CollisionArea, &ColorBody, &RotationalInput)>::query();
+        let mut query = <(
+            &TransformCpt,
+            &CollisionAreaCpt,
+            &ColorBodyCpt,
+            &RotationalInputCpt,
+        )>::query();
 
         for (transform, collision_area, colorbody, rotational) in query.iter(&self.world) {
             draw_ship(transform, collision_area, colorbody, frame);
+        }
+
+        if self.dbg_is_drawing_collisionareas {
+            let mut query = <(&TransformCpt, &CollisionAreaCpt)>::query();
+            for (transform, collision_area) in query.iter(&self.world) {
+                draw_collision_box(transform, collision_area, frame);
+            }
         }
 
         // let mut query = <(&Transform, &CollisionArea, &ColorBody)>::query()
@@ -282,8 +303,8 @@ impl Game {
         // for (transform, _collision_area, colorbody) in query.iter(&self.world) {
         // }
 
-        let mut query = <(&Transform, &CollisionArea, &ColorBody)>::query()
-            .filter(!component::<RotationalInput>());
+        let mut query = <(&TransformCpt, &CollisionAreaCpt, &ColorBodyCpt)>::query()
+            .filter(!component::<RotationalInputCpt>());
         for (transform, ca, colorbody) in query.iter(&self.world) {
             if ca.w == 1. {
                 draw_particle(transform, colorbody, frame);
@@ -321,10 +342,10 @@ fn clear(frame: &mut [u8]) {
     }
 }
 
-fn gen_particle() -> (Transform, RigidBody, CollisionArea, ColorBody) {
+fn gen_particle() -> (TransformCpt, RigidBodyCpt, CollisionAreaCpt, ColorBodyCpt) {
     let mut rng = rand::thread_rng();
     (
-        Transform {
+        TransformCpt {
             position: Vec2::new(
                 rng.gen::<f32>() * LOGICAL_WINDOW_WIDTH,
                 rng.gen::<f32>() * LOGICAL_WINDOW_HEIGHT,
@@ -332,28 +353,28 @@ fn gen_particle() -> (Transform, RigidBody, CollisionArea, ColorBody) {
             rotation: 0.0,
             scale: Vec2::new(1.0, 1.0),
         },
-        RigidBody {
+        RigidBodyCpt {
             velocity: Vec2::new(rng.gen::<f32>() * 1000.0, rng.gen::<f32>() * 1000.0),
         },
-        CollisionArea { w: 1.0, h: 1.0 },
-        ColorBody {
+        CollisionAreaCpt { w: 1.0, h: 1.0 },
+        ColorBodyCpt {
             primary: GREY,
             secondary: Color::RGB(0, 0, 0),
         },
     )
 }
 // there's a rusty way to populate a vector
-fn gen_particles(n: i32) -> Vec<(Transform, RigidBody, CollisionArea, ColorBody)> {
+fn gen_particles(n: i32) -> Vec<(TransformCpt, RigidBodyCpt, CollisionAreaCpt, ColorBodyCpt)> {
     let mut particles = vec![];
     for i in 0..n {
         particles.push(gen_particle());
     }
     particles
 }
-fn gen_square() -> (Transform, RigidBody, CollisionArea, ColorBody) {
+fn gen_square() -> (TransformCpt, RigidBodyCpt, CollisionAreaCpt, ColorBodyCpt) {
     let mut rng = rand::thread_rng();
     (
-        Transform {
+        TransformCpt {
             position: Vec2::new(
                 rng.gen::<f32>() * LOGICAL_WINDOW_WIDTH,
                 rng.gen::<f32>() * LOGICAL_WINDOW_HEIGHT,
@@ -361,17 +382,17 @@ fn gen_square() -> (Transform, RigidBody, CollisionArea, ColorBody) {
             rotation: 0.0,
             scale: Vec2::new(1.0, 1.0),
         },
-        RigidBody {
+        RigidBodyCpt {
             velocity: Vec2::new(rng.gen::<f32>() * 500.0, rng.gen::<f32>() * 500.0),
         },
-        CollisionArea { w: 25.0, h: 25.0 },
-        ColorBody {
+        CollisionAreaCpt { w: 15.0, h: 15.0 },
+        ColorBodyCpt {
             primary: RED,
             secondary: Color::RGB(0, 0, 0),
         },
     )
 }
-fn gen_squares(n: i32) -> Vec<(Transform, RigidBody, CollisionArea, ColorBody)> {
+fn gen_squares(n: i32) -> Vec<(TransformCpt, RigidBodyCpt, CollisionAreaCpt, ColorBodyCpt)> {
     let mut squares = vec![];
     for i in 0..n {
         squares.push(gen_square());
@@ -379,10 +400,10 @@ fn gen_squares(n: i32) -> Vec<(Transform, RigidBody, CollisionArea, ColorBody)> 
     squares
 }
 
-fn gen_circle() -> (Transform, RigidBody, CollisionArea, ColorBody) {
+fn gen_circle() -> (TransformCpt, RigidBodyCpt, CollisionAreaCpt, ColorBodyCpt) {
     let mut rng = rand::thread_rng();
     (
-        Transform {
+        TransformCpt {
             position: Vec2::new(
                 rng.gen::<f32>() * LOGICAL_WINDOW_WIDTH,
                 rng.gen::<f32>() * LOGICAL_WINDOW_HEIGHT,
@@ -390,17 +411,17 @@ fn gen_circle() -> (Transform, RigidBody, CollisionArea, ColorBody) {
             rotation: 0.0,
             scale: Vec2::new(1.0, 1.0),
         },
-        RigidBody {
+        RigidBodyCpt {
             velocity: Vec2::new(rng.gen::<f32>() * 100.0, rng.gen::<f32>() * 100.0),
         },
-        CollisionArea { w: 60.0, h: 60.0 },
-        ColorBody {
+        CollisionAreaCpt { w: 60.0, h: 60.0 },
+        ColorBodyCpt {
             primary: Color::RGB(160, 160, 0),
             secondary: Color::RGB(0, 0, 0),
         },
     )
 }
-fn gen_circles(n: i32) -> Vec<(Transform, RigidBody, CollisionArea, ColorBody)> {
+fn gen_circles(n: i32) -> Vec<(TransformCpt, RigidBodyCpt, CollisionAreaCpt, ColorBodyCpt)> {
     let mut circles = vec![];
     for i in 0..n {
         circles.push(gen_circle());
@@ -418,4 +439,20 @@ fn spawn_buncha_squares(world: &mut World) {
 
 fn spawn_buncha_circles(world: &mut World) {
     let _: &[Entity] = world.extend(gen_circles(5));
+}
+
+fn draw_collision_box(
+    transform: &TransformCpt,
+    collision_area: &CollisionAreaCpt,
+    frame: &mut [u8],
+) {
+    // ? cast or round then cast?
+    draw_rect(
+        transform.position.x as i32,
+        transform.position.y as i32,
+        collision_area.w as i32,
+        collision_area.h as i32,
+        MAGENTA,
+        frame,
+    );
 }
