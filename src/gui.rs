@@ -7,7 +7,16 @@ use pixels::{wgpu, PixelsContext};
 use winit::event_loop::EventLoopWindowTarget;
 use winit::window::Window;
 
-use crate::game::RunState;
+use crate::{game::RunState, PHYSICAL_WINDOW_HEIGHT, PHYSICAL_WINDOW_WIDTH};
+
+const EGUI_RED: egui::Color32 = egui::Color32::from_rgb(255, 0, 0);
+const EGUI_GREEN: egui::Color32 = egui::Color32::from_rgb(0, 255, 0);
+const EGUI_BLUE: egui::Color32 = egui::Color32::from_rgb(0, 0, 255);
+const EGUI_WHITE: egui::Color32 = egui::Color32::from_rgb(255, 255, 255);
+const EGUI_BLACK: egui::Color32 = egui::Color32::from_rgb(0, 0, 0);
+const EGUI_ORANGE: egui::Color32 = egui::Color32::from_rgb(255, 165, 0);
+const EGUI_YELLOW: egui::Color32 = egui::Color32::from_rgb(255, 255, 0);
+const EGUI_MAGENTA: egui::Color32 = egui::Color32::from_rgb(255, 0, 255);
 
 /// Manages all state required for rendering egui over `Pixels`.
 pub struct Framework {
@@ -81,7 +90,7 @@ impl Framework {
     }
 
     /// Prepare egui.
-    pub(crate) fn prepare(&mut self, window: &Window, game_state: GuiGameState) {
+    pub(crate) fn prepare(&mut self, window: &Window, game_state: StateMonitor) {
         // Run the egui frame and create all paint jobs to prepare for rendering.
         let raw_input = self.egui_state.take_egui_input(window);
         let output = self.egui_ctx.run(raw_input, |egui_ctx| {
@@ -153,40 +162,48 @@ impl Gui {
     }
 
     /// Create the UI using egui.
-    fn ui(&mut self, ctx: &Context, game_state: GuiGameState) {
-        let run_state = match game_state.run_state {
+    fn ui(&mut self, ctx: &Context, gs: StateMonitor) {
+        let run_state = match gs.run_state {
             RunState::Running => "running",
             RunState::Exiting => "exiting",
             RunState::Paused => "paused",
             RunState::Stopped => "stopped",
         };
-
-        let fps_healthy: String;
-        if game_state.render_fps < 60.0 {
-            fps_healthy = format!("☑");
-        } else {
-            fps_healthy = format!("🗙");
-        }
-
         egui::TopBottomPanel::top("menubar_container").show(ctx, |ui| {
             egui::menu::bar(ui, |ui| {
-                ui.menu_button("File", |ui| {
-                    if ui.button("About...").clicked() {
-                        self.window_open = true;
-                        ui.close_menu();
-                    }
-                    if ui.button("Exit").clicked() {
-                        self.window_open = false;
-                        ui.close_menu();
-                    }
-                });
+                // ui.menu_button("File", |ui| {
+                //     if ui.button("About...").clicked() {
+                //         self.window_open = true;
+                //         ui.close_menu();
+                //     }
+                //     if ui.button("Exit").clicked() {
+                //         self.window_open = false;
+                //         ui.close_menu();
+                //     }
+                // });
                 ui.horizontal(|ui| {
-                    ui.label(run_state);
                     ui.label(format!(
-                        "render_fps:{}{}",
-                        game_state.render_fps, fps_healthy
+                        "win dims: {}x{} ",
+                        PHYSICAL_WINDOW_WIDTH, PHYSICAL_WINDOW_HEIGHT
                     ));
-                    ui.label(format!("update_fps:{}", game_state.update_fps));
+                    ui.label(run_state);
+                    ui.label(
+                        egui::RichText::new(format!(
+                            "render[ fps: {} cnt: {} ]",
+                            gs.render_fps, gs.render_frame_count
+                        ))
+                        .color(match gs.render_fps as i32 {
+                            0..=29 => EGUI_RED,
+                            30..=59 => EGUI_ORANGE,
+                            60 => EGUI_GREEN,
+                            _ => EGUI_WHITE,
+                        }),
+                    );
+                    ui.label(format!(
+                        "update[ fps: {} cnt: {} ]",
+                        gs.update_fps, gs.update_frame_count
+                    ));
+                    ui.label(format!(" n_ents: {}", gs.ent_count));
                 })
             });
         });
@@ -209,8 +226,11 @@ impl Gui {
 }
 
 #[derive(Copy, Clone)]
-pub struct GuiGameState {
+pub struct StateMonitor {
     pub run_state: RunState,
     pub render_fps: f64,
     pub update_fps: f64,
+    pub render_frame_count: usize,
+    pub update_frame_count: usize,
+    pub ent_count: usize,
 }

@@ -80,7 +80,7 @@ pub trait GetRunState {
 pub struct Game {
     pub loop_controller: RunController,
     is_debug_on: bool,
-    world: World,
+    pub world: World,
     update_schedule: Schedule,
     resources: Resources,
     key_states: HashMap<VirtualKeyCode, Option<ButtonState>>,
@@ -173,32 +173,41 @@ impl Game {
             MovementStats {
                 speed: 500f32,
                 turn_rate: 0.1f32,
-                decel: 0.5f32,
             },
         ));
 
         // BATCH ADD ENTS
-        let _: &[Entity] = self.world.extend(gen_squares(12));
-        let _: &[Entity] = self.world.extend(gen_particles(1000));
-        let _: &[Entity] = self.world.extend(gen_circles(3));
+        // spawn_buncha_particles(&mut self.world);
+        // spawn_buncha_circles(&mut self.world);
+        spawn_buncha_squares(&mut self.world);
 
         self.resources.insert(INIT_DT);
         dev!("SETUP fin");
     }
 
     fn process_player_control_keys(&mut self) {
-        let input = &self.input;
         self.set_rotational_input();
+
+        if self.input.key_pressed(VirtualKeyCode::Space)
+            || self.input.key_held(VirtualKeyCode::Space)
+        {
+            let mut query = <&mut CraftState>::query();
+            for state in query.iter_mut(&mut self.world) {
+                state.is_firing_primary = true;
+            }
+        }
     }
 
     fn set_rotational_input(&mut self) {
         let input = &self.input;
+
         fn set_input_turn(turn: Option<Turn>, world: &mut World) {
             let mut query = <&mut RotationalInput>::query();
             for input in query.iter_mut(world) {
                 input.turn_sign = turn;
             }
         }
+
         fn set_input_thrust(is_thrusting: bool, world: &mut World) {
             let mut query = <&mut RotationalInput>::query();
             for input in query.iter_mut(world) {
@@ -397,4 +406,16 @@ fn gen_circles(n: i32) -> Vec<(Transform, RigidBody, CollisionArea, ColorBody)> 
         circles.push(gen_circle());
     }
     circles
+}
+
+fn spawn_buncha_particles(world: &mut World) {
+    let _: &[Entity] = world.extend(gen_particles(1000));
+}
+
+fn spawn_buncha_squares(world: &mut World) {
+    let _: &[Entity] = world.extend(gen_squares(12));
+}
+
+fn spawn_buncha_circles(world: &mut World) {
+    let _: &[Entity] = world.extend(gen_circles(5));
 }

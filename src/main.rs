@@ -15,7 +15,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use crate::{game::Game, gui::GuiGameState};
+use crate::{game::Game, gui::StateMonitor};
 use error_iter::ErrorIter as _;
 use game::{GetRunState, RunState};
 use game_loop::game_loop;
@@ -125,15 +125,12 @@ fn main() {
         move |g| {
             if g.game.get_runstate() == RunState::Running {
                 let dt = g.game.update_timer.tick();
-                // update_timer.fps().round();
-                // println!("update fps: {}", update_timer.fps().round());
                 g.game.update(dt);
             }
         },
         move |g| {
             if g.game.get_runstate() != RunState::Stopped {
                 let _ = g.game.render_timer.tick();
-                // println!("render fps: {}", render_timer.fps().round());
                 ////////////////////////////////////////////////////////////////////
                 // RENDER
                 ////////////////////////////////////////////////////////////////////
@@ -141,10 +138,13 @@ fn main() {
 
                 // Prepare egui
 
-                let gui_game_state = GuiGameState {
+                let gui_game_state = StateMonitor {
                     run_state: g.game.get_runstate(),
                     render_fps: g.game.render_timer.fps(),
                     update_fps: g.game.update_timer.fps(),
+                    render_frame_count: g.game.render_timer.count_frames(),
+                    update_frame_count: g.game.update_timer.count_frames(),
+                    ent_count: g.game.world.len(),
                 };
 
                 g.game.framework.prepare(&g.window, gui_game_state);

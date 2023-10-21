@@ -2,6 +2,8 @@ use std::collections::VecDeque;
 use std::iter::Sum;
 use std::time;
 
+const N_FRAME_LOGS: usize = 200;
+
 pub struct Dt(time::Duration);
 
 #[derive(Debug, Clone)]
@@ -48,8 +50,6 @@ pub struct FrameTimer {
     frame_log: FrameLogger<time::Duration>,
     frame_count: usize,
 }
-
-const N_FRAME_LOGS: usize = 200;
 
 impl FrameTimer {
     pub fn new() -> FrameTimer {
