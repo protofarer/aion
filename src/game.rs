@@ -85,11 +85,7 @@ pub struct Game {
     update_schedule: Schedule,
     resources: Resources,
     key_states: HashMap<VirtualKeyCode, Option<ButtonState>>,
-    pub pixels: Pixels,
-    pub framework: Framework,
     pub input: WinitInputHelper,
-    pub render_timer: FrameTimer,
-    pub update_timer: FrameTimer,
 }
 
 impl GetRunState for Game {
@@ -99,7 +95,7 @@ impl GetRunState for Game {
 }
 
 impl Game {
-    pub fn new(pixels: Pixels, framework: Framework) -> Result<Self, anyhow::Error> {
+    pub fn new() -> Result<Self, anyhow::Error> {
         dev!("INIT start");
 
         // todo 1. pass config struct
@@ -129,8 +125,6 @@ impl Game {
 
         let loop_controller = RunController::new();
 
-        let mut render_timer = FrameTimer::new();
-        let mut update_timer = FrameTimer::new();
         dev!("INIT fin");
 
         Ok(Self {
@@ -141,11 +135,7 @@ impl Game {
             update_schedule,
             resources,
             key_states: HashMap::new(),
-            pixels,
-            framework,
             input: WinitInputHelper::new(),
-            render_timer,
-            update_timer,
         })
     }
 
@@ -274,8 +264,8 @@ impl Game {
             .execute(&mut self.world, &mut self.resources);
     }
 
-    pub fn render(&mut self) {
-        let mut frame = self.pixels.frame_mut();
+    pub fn render(&mut self, pixels: &mut Pixels) {
+        let mut frame = pixels.frame_mut();
         clear(frame);
 
         draw_boundary(frame);

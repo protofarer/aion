@@ -10,8 +10,10 @@ mod systems;
 mod time;
 
 use std::{
+    cell::RefCell,
     env,
-    sync::Arc,
+    rc::Rc,
+    sync::{Arc, Mutex},
     time::{Duration, Instant},
 };
 
@@ -95,6 +97,27 @@ macro_rules! dev {
     }
 }
 
+// struct DebugContext {
+//     is_on: bool,
+//     is_drawing_collisionareas: bool,
+// }
+
+struct RenderContext {
+    pixels: Rc<RefCell<Pixels>>,
+    framework: Rc<RefCell<Framework>>,
+    render_timer: FrameTimer,
+    update_timer: Rc<RefCell<FrameTimer>>,
+}
+
+struct UpdateContext {
+    update_timer: Rc<RefCell<FrameTimer>>,
+}
+
+struct InputContext {
+    pixels: Rc<RefCell<Pixels>>,
+    framework: Rc<RefCell<Framework>>,
+}
+
 fn main() {
     env::set_var("RUST_LOG", "DEV=debug");
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("debug"))
@@ -103,17 +126,54 @@ fn main() {
 
     let event_loop = EventLoop::new();
     let window = init_window(&event_loop);
-
-    let (mut pixels, mut framework) = init_gfx(&event_loop, &window).unwrap();
     let mut input = WinitInputHelper::new();
 
-    let mut game = Game::new(pixels, framework).unwrap_or_else(|e| {
+    let (mut pixels, mut framework) = init_gfx(&event_loop, &window).unwrap();
+
+    // data for update closure
+    let pixels1 = Rc::new(RefCell::new(pixels));
+    let pixels2 = Rc::clone(&pixels1);
+
+    let framework1 = Rc::new(RefCell::new(framework));
+    let framework2 = Rc::clone(&framework1);
+
+    let mut update_timer1 = Rc::new(RefCell::new(FrameTimer::new()));
+    let mut update_timer2 = Rc::clone(&update_timer1);
+
+    let mut render_timer = FrameTimer::new();
+
+    // data for update closure
+    let mut update_ctx = Box::new(UpdateContext {
+        update_timer: update_timer1,
+    });
+
+    // data for render closure
+    let mut render_ctx = Box::new(RenderContext {
+        pixels: pixels1,
+        framework: framework1,
+        render_timer: render_timer,
+        update_timer: update_timer2,
+    });
+
+    // data for input closure
+    let mut input_ctx = Box::new(InputContext {
+        pixels: pixels2,
+        framework: framework2,
+    });
+
+    let dbg_ctx = Box::new(DebugContext {
+        is_on: false,
+        is_drawing_collisionareas: false,
+    });
+
+    let mut game = Game::new().unwrap_or_else(|e| {
         println!("{e}");
         std::process::exit(1);
     });
 
     game.setup();
     game.loop_controller.run();
+
     let window = Arc::new(window);
 
     game_loop(
@@ -124,43 +184,49 @@ fn main() {
         MAX_FRAME_TIME,
         move |g| {
             if g.game.get_runstate() == RunState::Running {
-                let dt = g.game.update_timer.tick();
+                let mut update_timer1 = update_ctx.update_timer.borrow_mut();
+                let dt = update_timer1.tick();
                 g.game.update(dt);
             }
         },
         move |g| {
             if g.game.get_runstate() != RunState::Stopped {
-                let _ = g.game.render_timer.tick();
+                let _ = render_ctx.render_timer.tick();
+
                 ////////////////////////////////////////////////////////////////////
                 // RENDER
                 ////////////////////////////////////////////////////////////////////
-                g.game.render();
+                ///
+                let mut framework = render_ctx.framework.borrow_mut();
+                let mut pixels = render_ctx.pixels.borrow_mut();
+
+                g.game.render(&mut pixels);
 
                 // Prepare egui
 
+                let render_timer = &render_ctx.render_timer;
+                let update_timer2 = render_ctx.update_timer.borrow();
                 let gui_game_state = StateMonitor {
                     run_state: g.game.get_runstate(),
-                    render_fps: g.game.render_timer.fps(),
-                    update_fps: g.game.update_timer.fps(),
-                    render_frame_count: g.game.render_timer.count_frames(),
-                    update_frame_count: g.game.update_timer.count_frames(),
+                    render_fps: render_timer.fps(),
+                    update_fps: update_timer2.fps(),
+                    render_frame_count: render_timer.count_frames(),
+                    update_frame_count: update_timer2.count_frames(),
                     ent_count: g.game.world.len(),
                 };
 
-                g.game.framework.prepare(&g.window, gui_game_state);
+                framework.prepare(&g.window, gui_game_state);
+
                 // Render everything together
-                let render_result = g
-                    .game
-                    .pixels
-                    .render_with(|encoder, render_target, context| {
-                        // Render the world texture
-                        context.scaling_renderer.render(encoder, render_target);
+                let render_result = pixels.render_with(|encoder, render_target, context| {
+                    // Render the world texture
+                    context.scaling_renderer.render(encoder, render_target);
 
-                        // Render egui
-                        g.game.framework.render(encoder, render_target, context);
+                    // Render egui
+                    framework.render(encoder, render_target, context);
 
-                        Ok(())
-                    });
+                    Ok(())
+                });
 
                 if let Err(err) = render_result {
                     log_error("pixels.render", err);
@@ -178,10 +244,14 @@ fn main() {
             //     std::thread::sleep(Duration::from_secs_f64(dt));
             // }
         },
-        |g, event| {
+        // move not in original tuzz code
+        move |g, event| {
+            let mut framework = input_ctx.framework.borrow_mut();
+            let mut pixels = input_ctx.pixels.borrow_mut();
+
             match event {
                 Event::WindowEvent { event, .. } => {
-                    g.game.framework.handle_event(event);
+                    framework.handle_event(event);
                 }
                 _ => {}
             }
@@ -198,16 +268,16 @@ fn main() {
                 }
 
                 if let Some(scale_factor) = g.game.input.scale_factor() {
-                    g.game.framework.scale_factor(scale_factor);
+                    framework.scale_factor(scale_factor);
                 }
 
                 if let Some(size) = g.game.input.window_resized() {
-                    if let Err(err) = g.game.pixels.resize_surface(size.width, size.height) {
+                    if let Err(err) = pixels.resize_surface(size.width, size.height) {
                         log_error("pixels.resize_surface", err);
                         g.game.loop_controller.exit();
                         g.exit()
                     }
-                    g.game.framework.resize(size.width, size.height);
+                    framework.resize(size.width, size.height);
                 }
             }
         },
