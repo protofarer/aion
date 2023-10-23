@@ -116,7 +116,10 @@ impl Game {
             .flush()
             .add_system(update_positions_system())
             .flush()
-            .add_system(collision_system())
+            .add_system(circle_collision_system())
+            .flush()
+            .add_system(world_boundary_bounce_rect_system())
+            .add_system(world_boundary_bounce_circle_system())
             .build();
 
         // let render_schedule = Schedule::builder().add_system(render_system()).build();
@@ -149,7 +152,8 @@ impl Game {
             RigidBodyCpt {
                 velocity: Vec2::new(0.0, 0.0),
             },
-            CollisionAreaCpt { w: 20.0, h: 20.0 },
+            // BoxColliderCpt { w: 20.0, h: 20.0 },
+            CircleColliderCpt { r: 15.0 },
             ColorBodyCpt {
                 primary: Color::RGB(0, 255, 0),
                 secondary: Color::RGB(0, 0, 0),
@@ -162,12 +166,14 @@ impl Game {
                 speed: 250f32,
                 turn_rate: 0.1f32,
             },
+            HumanInputCpt {},
         ));
 
         // BATCH ADD ENTS
         // spawn_buncha_particles(&mut self.world);
         // spawn_buncha_circles(&mut self.world);
         // spawn_buncha_squares(&mut self.world);
+        self.world.push(gen_circloid());
 
         self.resources.insert(INIT_DT);
         dev!("SETUP fin");
@@ -190,46 +196,72 @@ impl Game {
 
         draw_boundary(frame);
 
+        // draw circle coll ship
         let mut query = <(
             &TransformCpt,
-            &CollisionAreaCpt,
+            &CircleColliderCpt,
             &ColorBodyCpt,
             &RotationalInputCpt,
-        )>::query();
+        )>::query()
+        .filter(component::<HumanInputCpt>());
 
-        for (transform, collision_area, colorbody, rotational) in query.iter(&self.world) {
-            draw_ship(transform, collision_area, colorbody, frame);
+        for (transform, collision_circle, colorbody, rotational) in query.iter(&self.world) {
+            draw_ship_circle_collision(transform, collision_circle, colorbody, frame);
         }
 
+        // draw circloids
+        let mut query = <(&TransformCpt, &CircleColliderCpt, &ColorBodyCpt)>::query()
+            .filter(!component::<HumanInputCpt>());
+
+        for (transform, collision_circle, colorbody) in query.iter(&self.world) {
+            draw_circle(
+                frame,
+                transform.position.x as i32,
+                transform.position.y as i32,
+                collision_circle.r as i32,
+                colorbody.primary,
+            );
+        }
+
+        // draw box coll ship
+        // let mut query = <(
+        //     &TransformCpt,
+        //     &BoxColliderCpt,
+        //     &ColorBodyCpt,
+        //     &RotationalInputCpt,
+        // )>::query();
+
+        // for (transform, collision_box, colorbody, rotational) in query.iter(&self.world) {
+        //     draw_ship_circle_collision(transform, collision_box, colorbody, frame);
+        // }
+
         if dbg_ctx.is_drawing_collisionareas {
-            let mut query = <(&TransformCpt, &CollisionAreaCpt)>::query();
-            for (transform, collision_area) in query.iter(&self.world) {
-                draw_collision_box(transform, collision_area, frame);
+            // let mut query = <(&TransformCpt, &BoxColliderCpt)>::query();
+            // for (transform, collision_area) in query.iter(&self.world) {
+            //     draw_collision_box(transform, collision_area, frame);
+            // }
+            let mut query = <(&TransformCpt, &CircleColliderCpt)>::query();
+            for (transform, collision_circle) in query.iter(&self.world) {
+                draw_collision_circle(transform, collision_circle, frame);
             }
         }
 
-        // let mut query = <(&Transform, &CollisionArea, &ColorBody)>::query()
-        //     .filter(!component::<RotationalInput>());
-        // for (transform, _collision_area, colorbody) in query.iter(&self.world) {
-        // }
-
-        let mut query = <(&TransformCpt, &CollisionAreaCpt, &ColorBodyCpt)>::query()
-            .filter(!component::<RotationalInputCpt>());
+        // draw boxoids
+        let mut query = <(&TransformCpt, &BoxColliderCpt, &ColorBodyCpt)>::query()
+            .filter(!component::<HumanInputCpt>());
         for (transform, ca, colorbody) in query.iter(&self.world) {
             if ca.w == 1. {
                 draw_particle(transform, colorbody, frame);
-            } else if ca.w == 60. {
-                draw_circloid(transform, ca, colorbody, frame);
             } else {
                 draw_box(transform, colorbody, frame);
             }
         }
 
-        // black hole
-        draw_circle(frame, 200, 350, 60, WHITE);
+        // // black hole
+        // draw_circle(frame, 200, 350, 60, WHITE);
 
-        // star
-        draw_circle(frame, 800, 100, 40, ORANGE);
+        // // star
+        // draw_circle(frame, 800, 100, 40, ORANGE);
     }
 
     pub fn destroy(&self) {
@@ -237,54 +269,22 @@ impl Game {
     }
 
     fn process_player_control_keys(&mut self) {
-        self.set_rotational_input();
+        let mut query = <(&HumanInputCpt, &mut RotationalInputCpt)>::query();
+
+        let input = &self.input;
+        let runstate = self.get_runstate();
+
+        for (_human, mut rotational_input) in query.iter_mut(&mut self.world) {
+            set_rotational_input(input, runstate, &mut rotational_input);
+        }
 
         if self.input.key_pressed(VirtualKeyCode::Space)
             || self.input.key_held(VirtualKeyCode::Space)
         {
-            let mut query = <&mut CraftStateCpt>::query();
+            let mut query = <&mut CraftActionStateCpt>::query();
             for state in query.iter_mut(&mut self.world) {
                 state.is_firing_primary = true;
             }
-        }
-    }
-
-    fn set_rotational_input(&mut self) {
-        let input = &self.input;
-
-        fn set_input_turn(turn: Option<Turn>, world: &mut World) {
-            let mut query = <&mut RotationalInputCpt>::query();
-            for input in query.iter_mut(world) {
-                input.turn_sign = turn;
-            }
-        }
-
-        fn set_input_thrust(is_thrusting: bool, world: &mut World) {
-            let mut query = <&mut RotationalInputCpt>::query();
-            for input in query.iter_mut(world) {
-                input.is_thrusting = is_thrusting;
-            }
-        }
-
-        if self.loop_controller.get_state() == RunState::Running {
-            // HANDLE SINGLE MOVE KEYS
-            if input.key_pressed(VirtualKeyCode::D) || input.key_held(VirtualKeyCode::D) {
-                set_input_turn(Some(Turn::Right), &mut self.world);
-            }
-            if input.key_pressed(VirtualKeyCode::A) || input.key_held(VirtualKeyCode::A) {
-                set_input_turn(Some(Turn::Left), &mut self.world);
-            }
-            if input.key_pressed(VirtualKeyCode::W) || input.key_held(VirtualKeyCode::W) {
-                set_input_thrust(true, &mut self.world);
-            }
-        }
-
-        // HANDLE KEY UPS
-        if input.key_released(VirtualKeyCode::D) || input.key_released(VirtualKeyCode::A) {
-            set_input_turn(None, &mut self.world);
-        }
-        if input.key_released(VirtualKeyCode::W) {
-            set_input_thrust(false, &mut self.world);
         }
     }
 
@@ -327,7 +327,7 @@ fn clear(frame: &mut [u8]) {
     }
 }
 
-fn gen_particle() -> (TransformCpt, RigidBodyCpt, CollisionAreaCpt, ColorBodyCpt) {
+fn gen_particle() -> (TransformCpt, RigidBodyCpt, BoxColliderCpt, ColorBodyCpt) {
     let mut rng = rand::thread_rng();
     (
         TransformCpt {
@@ -341,7 +341,7 @@ fn gen_particle() -> (TransformCpt, RigidBodyCpt, CollisionAreaCpt, ColorBodyCpt
         RigidBodyCpt {
             velocity: Vec2::new(rng.gen::<f32>() * 1000.0, rng.gen::<f32>() * 1000.0),
         },
-        CollisionAreaCpt { w: 1.0, h: 1.0 },
+        BoxColliderCpt { w: 1.0, h: 1.0 },
         ColorBodyCpt {
             primary: GREY,
             secondary: Color::RGB(0, 0, 0),
@@ -349,14 +349,15 @@ fn gen_particle() -> (TransformCpt, RigidBodyCpt, CollisionAreaCpt, ColorBodyCpt
     )
 }
 // there's a rusty way to populate a vector
-fn gen_particles(n: i32) -> Vec<(TransformCpt, RigidBodyCpt, CollisionAreaCpt, ColorBodyCpt)> {
+fn gen_particles(n: i32) -> Vec<(TransformCpt, RigidBodyCpt, BoxColliderCpt, ColorBodyCpt)> {
     let mut particles = vec![];
     for i in 0..n {
         particles.push(gen_particle());
     }
     particles
 }
-pub fn gen_square() -> (TransformCpt, RigidBodyCpt, CollisionAreaCpt, ColorBodyCpt) {
+
+pub fn gen_boxoid() -> (TransformCpt, RigidBodyCpt, BoxColliderCpt, ColorBodyCpt) {
     let mut rng = rand::thread_rng();
     (
         TransformCpt {
@@ -370,22 +371,22 @@ pub fn gen_square() -> (TransformCpt, RigidBodyCpt, CollisionAreaCpt, ColorBodyC
         RigidBodyCpt {
             velocity: Vec2::new(rng.gen::<f32>() * 500.0, rng.gen::<f32>() * 500.0),
         },
-        CollisionAreaCpt { w: 15.0, h: 15.0 },
+        BoxColliderCpt { w: 15.0, h: 15.0 },
         ColorBodyCpt {
             primary: RED,
             secondary: Color::RGB(0, 0, 0),
         },
     )
 }
-pub fn gen_squares(n: i32) -> Vec<(TransformCpt, RigidBodyCpt, CollisionAreaCpt, ColorBodyCpt)> {
+pub fn gen_boxoids(n: i32) -> Vec<(TransformCpt, RigidBodyCpt, BoxColliderCpt, ColorBodyCpt)> {
     let mut squares = vec![];
     for i in 0..n {
-        squares.push(gen_square());
+        squares.push(gen_boxoid());
     }
     squares
 }
 
-fn gen_circle() -> (TransformCpt, RigidBodyCpt, CollisionAreaCpt, ColorBodyCpt) {
+fn gen_circloid() -> (TransformCpt, RigidBodyCpt, CircleColliderCpt, ColorBodyCpt) {
     let mut rng = rand::thread_rng();
     (
         TransformCpt {
@@ -399,17 +400,18 @@ fn gen_circle() -> (TransformCpt, RigidBodyCpt, CollisionAreaCpt, ColorBodyCpt) 
         RigidBodyCpt {
             velocity: Vec2::new(rng.gen::<f32>() * 100.0, rng.gen::<f32>() * 100.0),
         },
-        CollisionAreaCpt { w: 60.0, h: 60.0 },
+        CircleColliderCpt { r: 30.0 },
         ColorBodyCpt {
             primary: Color::RGB(160, 160, 0),
             secondary: Color::RGB(0, 0, 0),
         },
     )
 }
-fn gen_circles(n: i32) -> Vec<(TransformCpt, RigidBodyCpt, CollisionAreaCpt, ColorBodyCpt)> {
+
+pub fn gen_circloids(n: i32) -> Vec<(TransformCpt, RigidBodyCpt, CircleColliderCpt, ColorBodyCpt)> {
     let mut circles = vec![];
     for i in 0..n {
-        circles.push(gen_circle());
+        circles.push(gen_circloid());
     }
     circles
 }
@@ -418,10 +420,44 @@ fn spawn_buncha_particles(world: &mut World) {
     let _: &[Entity] = world.extend(gen_particles(1000));
 }
 
-fn spawn_buncha_squares(world: &mut World) {
-    let _: &[Entity] = world.extend(gen_squares(12));
+fn spawn_buncha_boxoids(world: &mut World) {
+    let _: &[Entity] = world.extend(gen_boxoids(12));
 }
 
-fn spawn_buncha_circles(world: &mut World) {
-    let _: &[Entity] = world.extend(gen_circles(5));
+fn spawn_buncha_circloids(world: &mut World) {
+    let _: &[Entity] = world.extend(gen_circloids(5));
+}
+
+fn set_rotational_input(
+    input: &WinitInputHelper,
+    runstate: RunState,
+    rotational_input: &mut RotationalInputCpt,
+) {
+    // let input = &self.input;
+
+    if runstate == RunState::Running {
+        // HANDLE SINGLE MOVE KEYS
+        if input.key_pressed(VirtualKeyCode::D) || input.key_held(VirtualKeyCode::D) {
+            // set_input_turn(Some(Turn::Right), &mut self.world);
+            rotational_input.turn_sign = Some(Turn::Right);
+        }
+        if input.key_pressed(VirtualKeyCode::A) || input.key_held(VirtualKeyCode::A) {
+            // set_input_turn(Some(Turn::Left), &mut self.world);
+            rotational_input.turn_sign = Some(Turn::Left);
+        }
+        if input.key_pressed(VirtualKeyCode::W) || input.key_held(VirtualKeyCode::W) {
+            // set_input_thrust(true, &mut self.world);
+            rotational_input.is_thrusting = true;
+        }
+    }
+
+    // HANDLE KEY UPS
+    if input.key_released(VirtualKeyCode::D) || input.key_released(VirtualKeyCode::A) {
+        // set_input_turn(None, &mut self.world);
+        rotational_input.turn_sign = None;
+    }
+    if input.key_released(VirtualKeyCode::W) {
+        // set_input_thrust(false, &mut self.world);
+        rotational_input.is_thrusting = false;
+    }
 }

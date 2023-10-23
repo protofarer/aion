@@ -31,10 +31,16 @@ impl RigidBodyCpt {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct CollisionAreaCpt {
+pub struct BoxColliderCpt {
     pub w: f32,
     pub h: f32,
 }
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct CircleColliderCpt {
+    pub r: f32,
+}
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ColorBodyCpt {
     pub primary: Color,
@@ -84,6 +90,9 @@ impl MovementStatsCpt {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
+pub struct HumanInputCpt {}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct TranslationalInputCpt {
     pub direction: Option<Direction>,
 }
@@ -94,11 +103,11 @@ impl TranslationalInputCpt {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct CraftStateCpt {
+pub struct CraftActionStateCpt {
     pub is_firing_primary: bool,
     pub is_firing_secondary: bool,
 }
-impl CraftStateCpt {
+impl CraftActionStateCpt {
     fn new() -> Self {
         Self {
             is_firing_primary: false,

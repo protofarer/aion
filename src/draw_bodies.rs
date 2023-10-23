@@ -3,14 +3,84 @@ use crate::{
     LOGICAL_WINDOW_WIDTH,
 };
 
-pub fn draw_ship(
+pub fn draw_ship_circle_collision(
     transform: &TransformCpt,
-    ca: &CollisionAreaCpt,
+    cc: &CircleColliderCpt,
     colorbody: &ColorBodyCpt,
     frame: &mut [u8],
 ) {
     // r is canonical draw length, half a side of collision square
-    let r = ca.w / 2.0;
+    // or the length of radius for collision circle
+    let r = cc.r;
+    let dy = r * (nalgebra_glm::pi::<f32>() / 4.0).sin();
+    let dx = r * (nalgebra_glm::pi::<f32>() / 4.0).cos();
+
+    let xc = transform.position.x;
+    let yc = transform.position.y;
+
+    let mut x1 = xc - dx;
+    let mut y1 = yc - dy;
+
+    // notch
+    let mut xm = xc - 0.5 * r;
+    let mut ym = yc;
+
+    let mut x2 = xc - dx;
+    let mut y2 = yc + dy;
+
+    let mut x3 = xc + r;
+    let mut y3 = yc;
+
+    (x1, y1) = rotate_point(x1, y1, transform.rotation, xc, yc);
+    (xm, ym) = rotate_point(xm, ym, transform.rotation, xc, yc);
+    (x2, y2) = rotate_point(x2, y2, transform.rotation, xc, yc);
+    (x3, y3) = rotate_point(x3, y3, transform.rotation, xc, yc);
+
+    // Draw the triangle
+    draw_line(
+        x1.round() as i32,
+        y1.round() as i32,
+        xm.round() as i32,
+        ym.round() as i32,
+        colorbody.primary,
+        frame,
+    );
+
+    draw_line(
+        xm.round() as i32,
+        ym.round() as i32,
+        x2.round() as i32,
+        y2.round() as i32,
+        colorbody.primary,
+        frame,
+    );
+    draw_line(
+        x2.round() as i32,
+        y2.round() as i32,
+        x3.round() as i32,
+        y3.round() as i32,
+        colorbody.primary,
+        frame,
+    );
+    draw_line(
+        x3.round() as i32,
+        y3.round() as i32,
+        x1.round() as i32,
+        y1.round() as i32,
+        colorbody.primary,
+        frame,
+    );
+}
+
+pub fn draw_ship_square(
+    transform: &TransformCpt,
+    bc: &BoxColliderCpt,
+    colorbody: &ColorBodyCpt,
+    frame: &mut [u8],
+) {
+    // r is canonical draw length, half a side of collision square
+    // or the length of radius for collision circle
+    let r = bc.w / 2.0;
 
     let x = transform.position.x;
     let y = transform.position.y;
@@ -151,7 +221,7 @@ pub fn draw_boundary(frame: &mut [u8]) {
 
 pub fn draw_circloid(
     transform: &TransformCpt,
-    collision_area: &CollisionAreaCpt,
+    collision_area: &BoxColliderCpt,
     colorbody: &ColorBodyCpt,
     frame: &mut [u8],
 ) {
@@ -165,9 +235,9 @@ pub fn draw_circloid(
     );
 }
 
-pub fn draw_collision_box(
+pub fn draw_collision_square(
     transform: &TransformCpt,
-    collision_area: &CollisionAreaCpt,
+    collision_area: &BoxColliderCpt,
     frame: &mut [u8],
 ) {
     // ? cast or round then cast?
@@ -178,5 +248,20 @@ pub fn draw_collision_box(
         collision_area.h as i32,
         MAGENTA,
         frame,
+    );
+}
+
+pub fn draw_collision_circle(
+    transform: &TransformCpt,
+    collision_circle: &CircleColliderCpt,
+    frame: &mut [u8],
+) {
+    // ? cast or round then cast?
+    draw_circle(
+        frame,
+        transform.position.x as i32,
+        transform.position.y as i32,
+        collision_circle.r as i32,
+        MAGENTA,
     );
 }

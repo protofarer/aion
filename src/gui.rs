@@ -11,7 +11,7 @@ use winit::window::Window;
 
 use crate::{
     dev,
-    game::{gen_square, gen_squares, Game, GetRunState, RunState},
+    game::{gen_boxoids, gen_circloids, Game, GetRunState, RunState},
     DebugContext, LOGICAL_WINDOW_HEIGHT, LOGICAL_WINDOW_WIDTH, PHYSICAL_WINDOW_HEIGHT,
     PHYSICAL_WINDOW_WIDTH,
 };
@@ -43,7 +43,8 @@ pub struct Framework {
 struct Gui {
     /// Only show the egui window when true.
     window_open: bool,
-    n_spawn_squares: f32,
+    n_spawn_boxoids: f32,
+    n_spawn_circloids: f32,
 }
 
 impl Framework {
@@ -168,7 +169,8 @@ impl Gui {
     fn new() -> Self {
         Self {
             window_open: true,
-            n_spawn_squares: 1.0,
+            n_spawn_boxoids: 1.0,
+            n_spawn_circloids: 1.0,
         }
     }
 
@@ -231,18 +233,37 @@ impl Gui {
                         &mut gs.dbg_ctx.is_drawing_collisionareas,
                         "show collision areas",
                     );
-                    if ui.button("spawn something").clicked() {
-                        gs.game
-                            .world
-                            .extend(gen_squares(self.n_spawn_squares as i32));
-                    }
-                    ui.add(egui::Slider::new(&mut self.n_spawn_squares, 0.0..=10.0).step_by(1.0));
+
+                    ui.horizontal(|ui| {
+                        if ui.button("spawn squares").clicked() {
+                            gs.game
+                                .world
+                                .extend(gen_boxoids(self.n_spawn_boxoids as i32));
+                        }
+                        ui.add(
+                            egui::Slider::new(&mut self.n_spawn_boxoids, 1.0..=10.0).step_by(1.0),
+                        );
+                    });
+
+                    ui.horizontal(|ui| {
+                        if ui.button("spawn circloids").clicked() {
+                            gs.game
+                                .world
+                                .extend(gen_circloids(self.n_spawn_circloids as i32));
+                        }
+                        ui.add(
+                            egui::Slider::new(&mut self.n_spawn_circloids, 1.0..=10.0).step_by(1.0),
+                        );
+                    });
+
                     if ui.button("step update").clicked() {
                         dev!("step update");
                     }
+
                     if ui.button("step render").clicked() {
                         dev!("step render");
                     }
+
                     if ui.button("restart").clicked() {
                         dev!("step render");
                     }
