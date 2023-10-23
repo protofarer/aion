@@ -1,6 +1,6 @@
 use std::{cell::RefCell, rc::Rc};
 
-use egui::{ClippedPrimitive, Context, TexturesDelta};
+use egui::{ClippedPrimitive, Context, Pos2, TexturesDelta};
 use egui_wgpu::{
     renderer::{Renderer, ScreenDescriptor},
     wgpu::Device,
@@ -9,7 +9,10 @@ use pixels::{wgpu, PixelsContext};
 use winit::event_loop::EventLoopWindowTarget;
 use winit::window::Window;
 
-use crate::{game::RunState, DebugContext, PHYSICAL_WINDOW_HEIGHT, PHYSICAL_WINDOW_WIDTH};
+use crate::{
+    game::RunState, DebugContext, LOGICAL_WINDOW_HEIGHT, LOGICAL_WINDOW_WIDTH,
+    PHYSICAL_WINDOW_HEIGHT, PHYSICAL_WINDOW_WIDTH,
+};
 
 const EGUI_RED: egui::Color32 = egui::Color32::from_rgb(255, 0, 0);
 const EGUI_GREEN: egui::Color32 = egui::Color32::from_rgb(0, 255, 0);
@@ -210,18 +213,20 @@ impl Gui {
             });
         });
         if gs.dbg_ctx.is_on {
-            egui::Window::new("Hola")
+            egui::Window::new("Debug Display")
                 .open(&mut self.window_open)
+                .default_pos(Pos2::new(PHYSICAL_WINDOW_WIDTH, 0.0))
                 .show(ctx, |ui| {
-                    ui.label("This example demonstrates using egui with pixels.");
-                    ui.label("Made with 💖 in San Francisco!");
+                    ui.checkbox(
+                        &mut gs.dbg_ctx.is_drawing_collisionareas,
+                        "show collision areas",
+                    );
 
                     ui.separator();
 
                     ui.horizontal(|ui| {
                         ui.spacing_mut().item_spacing.x /= 2.0;
                         ui.label("Learn more about egui at");
-                        ui.hyperlink("https://docs.rs/egui");
                     });
                 });
         }
