@@ -79,7 +79,7 @@ pub trait GetRunState {
 
 pub struct Game {
     pub loop_controller: RunController,
-    dbg_is_on: bool,
+    pub dbg_is_on: bool,
     dbg_is_drawing_collisionareas: bool,
     pub world: World,
     update_schedule: Schedule,
@@ -253,7 +253,6 @@ impl Game {
     }
 
     pub fn process_input(&mut self) {
-        let mut input = &self.input;
         self.process_dbg_keys();
         self.process_player_control_keys();
     }
@@ -429,20 +428,4 @@ fn spawn_buncha_squares(world: &mut World) {
 
 fn spawn_buncha_circles(world: &mut World) {
     let _: &[Entity] = world.extend(gen_circles(5));
-}
-
-fn draw_collision_box(
-    transform: &TransformCpt,
-    collision_area: &CollisionAreaCpt,
-    frame: &mut [u8],
-) {
-    // ? cast or round then cast?
-    draw_rect(
-        transform.position.x as i32,
-        transform.position.y as i32,
-        collision_area.w as i32,
-        collision_area.h as i32,
-        MAGENTA,
-        frame,
-    );
 }

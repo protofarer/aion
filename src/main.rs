@@ -126,7 +126,8 @@ fn main() {
 
     let event_loop = EventLoop::new();
     let window = init_window(&event_loop);
-    let mut input = WinitInputHelper::new();
+    let window = Arc::new(window);
+    // let mut input = WinitInputHelper::new();
 
     let (mut pixels, mut framework) = init_gfx(&event_loop, &window).unwrap();
 
@@ -161,11 +162,6 @@ fn main() {
         framework: framework2,
     });
 
-    let dbg_ctx = Box::new(DebugContext {
-        is_on: false,
-        is_drawing_collisionareas: false,
-    });
-
     let mut game = Game::new().unwrap_or_else(|e| {
         println!("{e}");
         std::process::exit(1);
@@ -173,8 +169,6 @@ fn main() {
 
     game.setup();
     game.loop_controller.run();
-
-    let window = Arc::new(window);
 
     game_loop(
         event_loop,
@@ -213,6 +207,7 @@ fn main() {
                     render_frame_count: render_timer.count_frames(),
                     update_frame_count: update_timer2.count_frames(),
                     ent_count: g.game.world.len(),
+                    is_dbg_on: g.game.dbg_is_on,
                 };
 
                 framework.prepare(&g.window, gui_game_state);

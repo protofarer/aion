@@ -171,16 +171,16 @@ impl Gui {
         };
         egui::TopBottomPanel::top("menubar_container").show(ctx, |ui| {
             egui::menu::bar(ui, |ui| {
-                // ui.menu_button("File", |ui| {
-                //     if ui.button("About...").clicked() {
-                //         self.window_open = true;
-                //         ui.close_menu();
-                //     }
-                //     if ui.button("Exit").clicked() {
-                //         self.window_open = false;
-                //         ui.close_menu();
-                //     }
-                // });
+                ui.menu_button("File", |ui| {
+                    if ui.button("About...").clicked() {
+                        self.window_open = true;
+                        ui.close_menu();
+                    }
+                    if ui.button("Exit").clicked() {
+                        self.window_open = false;
+                        ui.close_menu();
+                    }
+                });
                 ui.horizontal(|ui| {
                     ui.label(format!(
                         "win dims: {}x{} ",
@@ -207,21 +207,22 @@ impl Gui {
                 })
             });
         });
+        if gs.is_dbg_on {
+            egui::Window::new("Hola")
+                .open(&mut self.window_open)
+                .show(ctx, |ui| {
+                    ui.label("This example demonstrates using egui with pixels.");
+                    ui.label("Made with 💖 in San Francisco!");
 
-        // egui::Window::new("Hola")
-        //     .open(&mut self.window_open)
-        //     .show(ctx, |ui| {
-        //         ui.label("This example demonstrates using egui with pixels.");
-        //         ui.label("Made with 💖 in San Francisco!");
+                    ui.separator();
 
-        //         ui.separator();
-
-        //         ui.horizontal(|ui| {
-        //             ui.spacing_mut().item_spacing.x /= 2.0;
-        //             ui.label("Learn more about egui at");
-        //             ui.hyperlink("https://docs.rs/egui");
-        //         });
-        //     });
+                    ui.horizontal(|ui| {
+                        ui.spacing_mut().item_spacing.x /= 2.0;
+                        ui.label("Learn more about egui at");
+                        ui.hyperlink("https://docs.rs/egui");
+                    });
+                });
+        }
     }
 }
 
@@ -233,4 +234,5 @@ pub struct StateMonitor {
     pub render_frame_count: usize,
     pub update_frame_count: usize,
     pub ent_count: usize,
+    pub is_dbg_on: bool,
 }

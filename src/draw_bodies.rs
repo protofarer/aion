@@ -164,3 +164,19 @@ pub fn draw_circloid(
         colorbody.primary,
     );
 }
+
+pub fn draw_collision_box(
+    transform: &TransformCpt,
+    collision_area: &CollisionAreaCpt,
+    frame: &mut [u8],
+) {
+    // ? cast or round then cast?
+    draw_rect(
+        transform.position.x as i32,
+        transform.position.y as i32,
+        collision_area.w as i32,
+        collision_area.h as i32,
+        MAGENTA,
+        frame,
+    );
+}
