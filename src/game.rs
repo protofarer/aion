@@ -11,12 +11,12 @@ use winit::window::Window;
 use winit_input_helper::WinitInputHelper;
 
 use crate::draw::{draw_circle, draw_rect};
-use crate::draw_bodies::*;
 use crate::geom::*;
 use crate::gui::Framework;
 use crate::pixel::*;
 use crate::time::{Dt, FrameTimer};
 use crate::{dev, game, log_error, INIT_DT, LOGICAL_WINDOW_HEIGHT, LOGICAL_WINDOW_WIDTH}; // little function in main.rs
+use crate::{draw_bodies::*, DebugContext};
 use legion::*;
 use nalgebra_glm::Vec2;
 use pixels::{Pixels, SurfaceTexture};
@@ -79,8 +79,6 @@ pub trait GetRunState {
 
 pub struct Game {
     pub loop_controller: RunController,
-    pub dbg_is_on: bool,
-    dbg_is_drawing_collisionareas: bool,
     pub world: World,
     update_schedule: Schedule,
     resources: Resources,
@@ -129,8 +127,6 @@ impl Game {
 
         Ok(Self {
             loop_controller,
-            dbg_is_on: false,
-            dbg_is_drawing_collisionareas: false,
             world,
             update_schedule,
             resources,
@@ -175,6 +171,69 @@ impl Game {
 
         self.resources.insert(INIT_DT);
         dev!("SETUP fin");
+    }
+
+    pub fn process_input(&mut self, dbg_context: &mut DebugContext) {
+        self.process_dbg_keys(dbg_context);
+        self.process_player_control_keys();
+    }
+
+    pub fn update(&mut self, dt: Dt) {
+        self.resources.insert(dt);
+        self.update_schedule
+            .execute(&mut self.world, &mut self.resources);
+    }
+
+    pub fn render(&mut self, pixels: &mut Pixels, dbg_ctx: &DebugContext) {
+        let mut frame = pixels.frame_mut();
+        clear(frame);
+
+        draw_boundary(frame);
+
+        let mut query = <(
+            &TransformCpt,
+            &CollisionAreaCpt,
+            &ColorBodyCpt,
+            &RotationalInputCpt,
+        )>::query();
+
+        for (transform, collision_area, colorbody, rotational) in query.iter(&self.world) {
+            draw_ship(transform, collision_area, colorbody, frame);
+        }
+
+        if dbg_ctx.is_drawing_collisionareas {
+            let mut query = <(&TransformCpt, &CollisionAreaCpt)>::query();
+            for (transform, collision_area) in query.iter(&self.world) {
+                draw_collision_box(transform, collision_area, frame);
+            }
+        }
+
+        // let mut query = <(&Transform, &CollisionArea, &ColorBody)>::query()
+        //     .filter(!component::<RotationalInput>());
+        // for (transform, _collision_area, colorbody) in query.iter(&self.world) {
+        // }
+
+        let mut query = <(&TransformCpt, &CollisionAreaCpt, &ColorBodyCpt)>::query()
+            .filter(!component::<RotationalInputCpt>());
+        for (transform, ca, colorbody) in query.iter(&self.world) {
+            if ca.w == 1. {
+                draw_particle(transform, colorbody, frame);
+            } else if ca.w == 60. {
+                draw_circloid(transform, ca, colorbody, frame);
+            } else {
+                draw_box(transform, colorbody, frame);
+            }
+        }
+
+        // black hole
+        draw_circle(frame, 200, 350, 60, WHITE);
+
+        // star
+        draw_circle(frame, 800, 100, 40, ORANGE);
+    }
+
+    pub fn destroy(&self) {
+        dev!("DESTROY game");
     }
 
     fn process_player_control_keys(&mut self) {
@@ -229,7 +288,7 @@ impl Game {
         }
     }
 
-    fn process_dbg_keys(&mut self) {
+    fn process_dbg_keys(&mut self, dbg_ctx: &mut DebugContext) {
         if self.input.key_pressed(VirtualKeyCode::P) {
             if self.get_runstate() == RunState::Running {
                 self.loop_controller.pause();
@@ -245,74 +304,11 @@ impl Game {
             }
         }
         if self.input.key_pressed(VirtualKeyCode::Grave) {
-            self.dbg_is_on = !self.dbg_is_on;
+            dbg_ctx.is_on = !dbg_ctx.is_on;
         }
         if self.input.key_pressed(VirtualKeyCode::Key1) {
-            self.dbg_is_drawing_collisionareas = !self.dbg_is_drawing_collisionareas;
+            dbg_ctx.is_drawing_collisionareas = !dbg_ctx.is_drawing_collisionareas;
         }
-    }
-
-    pub fn process_input(&mut self) {
-        self.process_dbg_keys();
-        self.process_player_control_keys();
-    }
-
-    pub fn update(&mut self, dt: Dt) {
-        self.resources.insert(dt);
-        self.update_schedule
-            .execute(&mut self.world, &mut self.resources);
-    }
-
-    pub fn render(&mut self, pixels: &mut Pixels) {
-        let mut frame = pixels.frame_mut();
-        clear(frame);
-
-        draw_boundary(frame);
-
-        let mut query = <(
-            &TransformCpt,
-            &CollisionAreaCpt,
-            &ColorBodyCpt,
-            &RotationalInputCpt,
-        )>::query();
-
-        for (transform, collision_area, colorbody, rotational) in query.iter(&self.world) {
-            draw_ship(transform, collision_area, colorbody, frame);
-        }
-
-        if self.dbg_is_drawing_collisionareas {
-            let mut query = <(&TransformCpt, &CollisionAreaCpt)>::query();
-            for (transform, collision_area) in query.iter(&self.world) {
-                draw_collision_box(transform, collision_area, frame);
-            }
-        }
-
-        // let mut query = <(&Transform, &CollisionArea, &ColorBody)>::query()
-        //     .filter(!component::<RotationalInput>());
-        // for (transform, _collision_area, colorbody) in query.iter(&self.world) {
-        // }
-
-        let mut query = <(&TransformCpt, &CollisionAreaCpt, &ColorBodyCpt)>::query()
-            .filter(!component::<RotationalInputCpt>());
-        for (transform, ca, colorbody) in query.iter(&self.world) {
-            if ca.w == 1. {
-                draw_particle(transform, colorbody, frame);
-            } else if ca.w == 60. {
-                draw_circloid(transform, ca, colorbody, frame);
-            } else {
-                draw_box(transform, colorbody, frame);
-            }
-        }
-
-        // black hole
-        draw_circle(frame, 200, 350, 60, WHITE);
-
-        // star
-        draw_circle(frame, 800, 100, 40, ORANGE);
-    }
-
-    pub fn destroy(&self) {
-        dev!("DESTROY game");
     }
 }
 

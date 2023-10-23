@@ -97,10 +97,10 @@ macro_rules! dev {
     }
 }
 
-// struct DebugContext {
-//     is_on: bool,
-//     is_drawing_collisionareas: bool,
-// }
+pub struct DebugContext {
+    is_on: bool,
+    is_drawing_collisionareas: bool,
+}
 
 struct RenderContext {
     pixels: Rc<RefCell<Pixels>>,
@@ -162,6 +162,16 @@ fn main() {
         framework: framework2,
     });
 
+    let mut dbg_ctx = DebugContext {
+        is_on: false,
+        is_drawing_collisionareas: false,
+    };
+
+    let dbg_ctx = Rc::new(RefCell::new(dbg_ctx));
+    let dbg_ctx_render = Rc::clone(&dbg_ctx);
+    let dbg_ctx_input = Rc::clone(&dbg_ctx);
+    let dbg_ctx_gui = Rc::clone(&dbg_ctx);
+
     let mut game = Game::new().unwrap_or_else(|e| {
         println!("{e}");
         std::process::exit(1);
@@ -194,12 +204,13 @@ fn main() {
                 let mut framework = render_ctx.framework.borrow_mut();
                 let mut pixels = render_ctx.pixels.borrow_mut();
 
-                g.game.render(&mut pixels);
+                g.game.render(&mut pixels, &dbg_ctx_render.borrow());
 
                 // Prepare egui
 
                 let render_timer = &render_ctx.render_timer;
                 let update_timer2 = render_ctx.update_timer.borrow();
+
                 let gui_game_state = StateMonitor {
                     run_state: g.game.get_runstate(),
                     render_fps: render_timer.fps(),
@@ -207,7 +218,7 @@ fn main() {
                     render_frame_count: render_timer.count_frames(),
                     update_frame_count: update_timer2.count_frames(),
                     ent_count: g.game.world.len(),
-                    is_dbg_on: g.game.dbg_is_on,
+                    dbg_ctx: &mut dbg_ctx_gui.borrow_mut(),
                 };
 
                 framework.prepare(&g.window, gui_game_state);
@@ -252,7 +263,7 @@ fn main() {
             }
 
             if g.game.input.update(event) {
-                g.game.process_input();
+                g.game.process_input(&mut dbg_ctx_input.borrow_mut());
 
                 if g.game.input.close_requested()
                     || g.game.input.key_pressed(VirtualKeyCode::Escape)

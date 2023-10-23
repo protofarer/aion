@@ -1,3 +1,5 @@
+use std::{cell::RefCell, rc::Rc};
+
 use egui::{ClippedPrimitive, Context, TexturesDelta};
 use egui_wgpu::{
     renderer::{Renderer, ScreenDescriptor},
@@ -7,7 +9,7 @@ use pixels::{wgpu, PixelsContext};
 use winit::event_loop::EventLoopWindowTarget;
 use winit::window::Window;
 
-use crate::{game::RunState, PHYSICAL_WINDOW_HEIGHT, PHYSICAL_WINDOW_WIDTH};
+use crate::{game::RunState, DebugContext, PHYSICAL_WINDOW_HEIGHT, PHYSICAL_WINDOW_WIDTH};
 
 const EGUI_RED: egui::Color32 = egui::Color32::from_rgb(255, 0, 0);
 const EGUI_GREEN: egui::Color32 = egui::Color32::from_rgb(0, 255, 0);
@@ -207,7 +209,7 @@ impl Gui {
                 })
             });
         });
-        if gs.is_dbg_on {
+        if gs.dbg_ctx.is_on {
             egui::Window::new("Hola")
                 .open(&mut self.window_open)
                 .show(ctx, |ui| {
@@ -226,13 +228,13 @@ impl Gui {
     }
 }
 
-#[derive(Copy, Clone)]
-pub struct StateMonitor {
+// #[derive(Copy, Clone)]
+pub struct StateMonitor<'a> {
     pub run_state: RunState,
     pub render_fps: f64,
     pub update_fps: f64,
     pub render_frame_count: usize,
     pub update_frame_count: usize,
     pub ent_count: usize,
-    pub is_dbg_on: bool,
+    pub dbg_ctx: &'a mut DebugContext,
 }
