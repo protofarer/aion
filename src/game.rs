@@ -159,7 +159,7 @@ impl Game {
                 is_thrusting: false,
             },
             MovementStatsCpt {
-                speed: 500f32,
+                speed: 250f32,
                 turn_rate: 0.1f32,
             },
         ));
@@ -167,7 +167,7 @@ impl Game {
         // BATCH ADD ENTS
         // spawn_buncha_particles(&mut self.world);
         // spawn_buncha_circles(&mut self.world);
-        spawn_buncha_squares(&mut self.world);
+        // spawn_buncha_squares(&mut self.world);
 
         self.resources.insert(INIT_DT);
         dev!("SETUP fin");
@@ -356,7 +356,7 @@ fn gen_particles(n: i32) -> Vec<(TransformCpt, RigidBodyCpt, CollisionAreaCpt, C
     }
     particles
 }
-fn gen_square() -> (TransformCpt, RigidBodyCpt, CollisionAreaCpt, ColorBodyCpt) {
+pub fn gen_square() -> (TransformCpt, RigidBodyCpt, CollisionAreaCpt, ColorBodyCpt) {
     let mut rng = rand::thread_rng();
     (
         TransformCpt {
@@ -377,7 +377,7 @@ fn gen_square() -> (TransformCpt, RigidBodyCpt, CollisionAreaCpt, ColorBodyCpt) 
         },
     )
 }
-fn gen_squares(n: i32) -> Vec<(TransformCpt, RigidBodyCpt, CollisionAreaCpt, ColorBodyCpt)> {
+pub fn gen_squares(n: i32) -> Vec<(TransformCpt, RigidBodyCpt, CollisionAreaCpt, ColorBodyCpt)> {
     let mut squares = vec![];
     for i in 0..n {
         squares.push(gen_square());

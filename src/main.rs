@@ -212,12 +212,11 @@ fn main() {
                 let update_timer2 = render_ctx.update_timer.borrow();
 
                 let gui_game_state = StateMonitor {
-                    run_state: g.game.get_runstate(),
+                    game: &mut g.game,
                     render_fps: render_timer.fps(),
                     update_fps: update_timer2.fps(),
                     render_frame_count: render_timer.count_frames(),
                     update_frame_count: update_timer2.count_frames(),
-                    ent_count: g.game.world.len(),
                     dbg_ctx: &mut dbg_ctx_gui.borrow_mut(),
                 };
 

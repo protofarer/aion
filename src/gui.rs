@@ -10,8 +10,10 @@ use winit::event_loop::EventLoopWindowTarget;
 use winit::window::Window;
 
 use crate::{
-    game::RunState, DebugContext, LOGICAL_WINDOW_HEIGHT, LOGICAL_WINDOW_WIDTH,
-    PHYSICAL_WINDOW_HEIGHT, PHYSICAL_WINDOW_WIDTH,
+    dev,
+    game::{gen_square, gen_squares, Game, GetRunState, RunState},
+    DebugContext, LOGICAL_WINDOW_HEIGHT, LOGICAL_WINDOW_WIDTH, PHYSICAL_WINDOW_HEIGHT,
+    PHYSICAL_WINDOW_WIDTH,
 };
 
 const EGUI_RED: egui::Color32 = egui::Color32::from_rgb(255, 0, 0);
@@ -41,6 +43,7 @@ pub struct Framework {
 struct Gui {
     /// Only show the egui window when true.
     window_open: bool,
+    n_spawn_squares: f32,
 }
 
 impl Framework {
@@ -163,17 +166,22 @@ impl Framework {
 impl Gui {
     /// Create a `Gui`.
     fn new() -> Self {
-        Self { window_open: true }
+        Self {
+            window_open: true,
+            n_spawn_squares: 1.0,
+        }
     }
 
     /// Create the UI using egui.
     fn ui(&mut self, ctx: &Context, gs: StateMonitor) {
-        let run_state = match gs.run_state {
+        let run_state = match gs.game.get_runstate() {
             RunState::Running => "running",
             RunState::Exiting => "exiting",
             RunState::Paused => "paused",
             RunState::Stopped => "stopped",
         };
+
+        // MENU BAR
         egui::TopBottomPanel::top("menubar_container").show(ctx, |ui| {
             egui::menu::bar(ui, |ui| {
                 ui.menu_button("File", |ui| {
@@ -208,10 +216,12 @@ impl Gui {
                         "update[ fps: {} cnt: {} ]",
                         gs.update_fps, gs.update_frame_count
                     ));
-                    ui.label(format!(" n_ents: {}", gs.ent_count));
+                    ui.label(format!(" n_ents: {}", gs.game.world.len()));
                 })
             });
         });
+
+        // WINDOW: DEBUG INFO AND GAME STATE MUTATION
         if gs.dbg_ctx.is_on {
             egui::Window::new("Debug Display")
                 .open(&mut self.window_open)
@@ -221,6 +231,21 @@ impl Gui {
                         &mut gs.dbg_ctx.is_drawing_collisionareas,
                         "show collision areas",
                     );
+                    if ui.button("spawn something").clicked() {
+                        gs.game
+                            .world
+                            .extend(gen_squares(self.n_spawn_squares as i32));
+                    }
+                    ui.add(egui::Slider::new(&mut self.n_spawn_squares, 0.0..=10.0).step_by(1.0));
+                    if ui.button("step update").clicked() {
+                        dev!("step update");
+                    }
+                    if ui.button("step render").clicked() {
+                        dev!("step render");
+                    }
+                    if ui.button("restart").clicked() {
+                        dev!("step render");
+                    }
 
                     ui.separator();
 
@@ -235,11 +260,10 @@ impl Gui {
 
 // #[derive(Copy, Clone)]
 pub struct StateMonitor<'a> {
-    pub run_state: RunState,
+    pub game: &'a mut Game,
     pub render_fps: f64,
     pub update_fps: f64,
     pub render_frame_count: usize,
     pub update_frame_count: usize,
-    pub ent_count: usize,
     pub dbg_ctx: &'a mut DebugContext,
 }
