@@ -145,18 +145,6 @@ impl MindStateCpt {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub enum Direction {
-    N,
-    NE,
-    E,
-    SE,
-    S,
-    SW,
-    W,
-    NW,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ProjectileEmitterCpt {
     pub projectile_velocity: nalgebra_glm::Vec2,
     pub cooldown: i32,
@@ -195,4 +183,16 @@ impl ProjectileCpt {
             start_time: time::Instant::now(),
         }
     }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum Direction {
+    N,
+    NE,
+    E,
+    SE,
+    S,
+    SW,
+    W,
+    NW,
 }

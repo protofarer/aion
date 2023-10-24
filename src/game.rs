@@ -21,8 +21,8 @@ use crate::{draw_bodies::*, DebugContext};
 use nalgebra_glm::Vec2;
 use pixels::{Pixels, SurfaceTexture};
 
-use super::systems::*;
 use crate::components::*;
+use crate::systems::*;
 pub struct WindowDims {
     pub w: f32,
     pub h: f32,
@@ -89,19 +89,66 @@ impl GetRunState for Game {
     }
 }
 
-pub enum Query {
-    Motion,
-}
-
 impl Game {
     pub fn new() -> Result<Self, anyhow::Error> {
         dev!("INIT start");
 
-        // todo 1. pass config struct
-        // todo 2. let game init/new parse readline
-        // todo 3. pass both, then readline args override config struct
-        // todo 4. read a toml config file that can be overriden by readline
+        let loop_controller = RunController::new();
+        let mut world = World::new();
 
+        dev!("INIT fin");
+
+        Ok(Self {
+            loop_controller,
+            input: WinitInputHelper::new(),
+            world,
+        })
+    }
+
+    pub fn setup(&mut self) {
+        dev!("SETUP start");
+
+        // PLAYER ENTITY
+        // todo use tag
+        let _ = self.world.spawn((
+            HumanInputCpt {},
+            TransformCpt::new(),
+            RigidBodyCpt::new(),     // current velocity, used for physics
+            RotatableBodyCpt::new(), // curent turn rate, used for physics
+            MoveAttributesCpt::new(),
+            CircleColliderCpt { r: 15.0 },
+            ColorBodyCpt {
+                primary: Color::RGB(0, 255, 0),
+                secondary: Color::RGB(0, 0, 0),
+            },
+            RotationalInputCpt::new(),
+            ProjectileEmitterCpt {
+                projectile_velocity: Vec2::new(0., 0.),
+                cooldown: 250,
+                projectile_duration: Duration::new(0, 3000_000_000),
+                hit_damage: 10,
+                is_friendly: true,
+                last_emission_time: None,
+            },
+        ));
+
+        // spawn_buncha_particles(&mut self.world);
+        // spawn_buncha_circles(&mut self.world);
+        // spawn_buncha_squares(&mut self.world);
+
+        dev!("SETUP fin");
+    }
+
+    pub fn process_input(&mut self, dbg_context: &mut DebugContext) {
+        self.process_dbg_keys(dbg_context);
+
+        // produce player keys from key events, later, input system (ecs)
+        // processes player keys and mutates ship state
+
+        // self.process_player_control_keys();
+    }
+
+    pub fn update(&mut self, dt: Dt) {
         // let update_schedule = Schedule::builder()
         //     .add_system(process_rotational_input_system())
         //     .add_system(process_translational_input_system())
@@ -113,70 +160,6 @@ impl Game {
         //     .add_system(world_boundary_bounce_rect_system())
         //     .add_system(world_boundary_bounce_circle_system())
         //     .build();
-
-        let loop_controller = RunController::new();
-
-        let mut world = World::new();
-
-        dev!("INIT fin");
-
-        Ok(Self {
-            loop_controller,
-            world,
-            input: WinitInputHelper::new(),
-        })
-    }
-
-    pub fn setup(&mut self) {
-        dev!("SETUP start");
-
-        // PLAYER ENTITY
-        // todo use tag
-        let _ = self.world.spawn((
-            HumanInputCpt {},
-            TransformCpt {
-                position: Vec2::new(300.0, 300.0),
-                heading: 0.0,
-                scale: Vec2::new(1.0, 1.0),
-            },
-            RigidBodyCpt::new(),     // current velocity, used for physics
-            RotatableBodyCpt::new(), // curent turn rate, used for physics
-            MoveAttributesCpt::new(),
-            CircleColliderCpt { r: 15.0 },
-            ColorBodyCpt {
-                primary: Color::RGB(0, 255, 0),
-                secondary: Color::RGB(0, 0, 0),
-            },
-            RotationalInputCpt {
-                turn_sign: None,
-                is_thrusting: false,
-            },
-            ProjectileEmitterCpt {
-                projectile_velocity: Vec2::new(0., 0.),
-                cooldown: 250,
-                projectile_duration: Duration::new(0, 3000_000_000),
-                hit_damage: 10,
-                is_friendly: true,
-                last_emission_time: None,
-            },
-        ));
-
-        // BATCH ADD ENTS
-        // spawn_buncha_particles(&mut self.world);
-        // spawn_buncha_circles(&mut self.world);
-        // spawn_buncha_squares(&mut self.world);
-
-        dev!("SETUP fin");
-    }
-
-    pub fn process_input(&mut self, dbg_context: &mut DebugContext) {
-        self.process_dbg_keys(dbg_context);
-        self.process_player_control_keys();
-    }
-
-    pub fn update(&mut self, dt: Dt) {
-        // process rotational control
-        // update positions
         let runstate = self.get_runstate();
         system_process_ship_controls(&mut self.world, runstate, &self.input);
         system_integrate_rotation(&mut self.world, &dt);
@@ -185,70 +168,16 @@ impl Game {
 
     pub fn render(&mut self, pixels: &mut Pixels, dbg_ctx: &DebugContext) {
         let mut frame = pixels.frame_mut();
-        clear(frame);
 
+        clear(frame);
         draw_boundary(frame);
 
-        // draw circle coll ship
-        // let mut query = <(
-        //     &TransformCpt,
-        //     &CircleColliderCpt,
-        //     &ColorBodyCpt,
-        //     &RotationalInputCpt,
-        // )>::query()
-        // .filter(component::<HumanInputCpt>());
-
-        // for (transform, collision_circle, colorbody, rotational) in query.iter(&self.world) {
-        //     draw_ship_circle_collision(transform, collision_circle, colorbody, frame);
-        // }
         for (_id, (transform, collision_circle, colorbody)) in
             self.world
                 .query_mut::<(&TransformCpt, &CircleColliderCpt, &ColorBodyCpt)>()
         {
             draw_ship_circle_collision(transform, collision_circle, colorbody, frame);
         }
-        // draw_ship_circle_collision(
-        //     &TransformCpt::new(),
-        //     &CircleColliderCpt::new(),
-        //     &ColorBodyCpt::new(),
-        //     frame,
-        // );
-
-        // for (id, (transform, rigidbody)) in world.query_mut::<(&mut TransformCpt, &RigidBodyCpt)>() {
-        //     for (id, (transform, collision_circle, colorbody, rotational)) in self.world.query_mut::<(
-        //         &TransformCpt,
-        //         &CircleColliderCpt,
-        //         &ColorBodyCpt,
-        //         &RotationalInputCpt,
-        //     )>() {
-        //         draw_ship_circle_collision(transform, collision_circle, colorbody, frame);
-        //     }
-
-        // draw circloids
-        // let mut query = <(&TransformCpt, &CircleColliderCpt, &ColorBodyCpt)>::query()
-        //     .filter(!component::<HumanInputCpt>());
-
-        // for (transform, collision_circle, colorbody) in query.iter(&self.world) {
-        //     draw_circle(
-        //         frame,
-        //         transform.position.x as i32,
-        //         transform.position.y as i32,
-        //         collision_circle.r as i32,
-        //         colorbody.primary,
-        //     );
-        // }
-
-        // draw box coll ship
-        // let mut query = <(
-        //     &TransformCpt,
-        //     &BoxColliderCpt,
-        //     &ColorBodyCpt,
-        //     &RotationalInputCpt,
-        // )>::query();
-
-        // for (transform, collision_box, colorbody, rotational) in query.iter(&self.world) {
-        //     draw_ship_circle_collision(transform, collision_box, colorbody, frame);
-        // }
 
         if dbg_ctx.is_drawing_collisionareas {
             // let mut query = <(&TransformCpt, &BoxColliderCpt)>::query();
@@ -260,23 +189,6 @@ impl Game {
             //     draw_collision_circle(transform, collision_circle, frame);
             // }
         }
-
-        // draw boxoids
-        // let mut query = <(&TransformCpt, &BoxColliderCpt, &ColorBodyCpt)>::query()
-        //     .filter(!component::<HumanInputCpt>());
-        // for (transform, ca, colorbody) in query.iter(&self.world) {
-        //     if ca.w == 1. {
-        //         draw_particle(transform, colorbody, frame);
-        //     } else {
-        //         draw_box(transform, colorbody, frame);
-        //     }
-        // }
-
-        // // black hole
-        // draw_circle(frame, 200, 350, 60, WHITE);
-
-        // // star
-        // draw_circle(frame, 800, 100, 40, ORANGE);
     }
 
     pub fn destroy(&self) {
@@ -334,9 +246,6 @@ impl Drop for Game {
 }
 
 fn clear(frame: &mut [u8]) {
-    // for (i, byte) in frame.iter_mut().enumerate() {
-    //     *byte = if i % 4 == 3 { 255 } else { 0 };
-    // }
     for pixel in frame.chunks_exact_mut(4) {
         pixel.copy_from_slice(BLACK.as_bytes());
     }
@@ -363,6 +272,7 @@ fn gen_particle() -> (TransformCpt, RigidBodyCpt, BoxColliderCpt, ColorBodyCpt) 
         },
     )
 }
+
 // there's a rusty way to populate a vector
 fn gen_particles(n: i32) -> Vec<(TransformCpt, RigidBodyCpt, BoxColliderCpt, ColorBodyCpt)> {
     let mut particles = vec![];
