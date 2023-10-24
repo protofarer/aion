@@ -1,4 +1,5 @@
 use anyhow::{Context, Result};
+use hecs::{PreparedQuery, World};
 use log::info;
 use rand::prelude::*;
 #[allow(warnings)]
@@ -17,7 +18,6 @@ use crate::pixel::*;
 use crate::time::{Dt, FrameTimer};
 use crate::{dev, game, log_error, INIT_DT, LOGICAL_WINDOW_HEIGHT, LOGICAL_WINDOW_WIDTH}; // little function in main.rs
 use crate::{draw_bodies::*, DebugContext};
-use legion::*;
 use nalgebra_glm::Vec2;
 use pixels::{Pixels, SurfaceTexture};
 
@@ -79,17 +79,18 @@ pub trait GetRunState {
 
 pub struct Game {
     pub loop_controller: RunController,
-    pub world: World,
-    update_schedule: Schedule,
-    resources: Resources,
-    key_states: HashMap<VirtualKeyCode, Option<ButtonState>>,
     pub input: WinitInputHelper,
+    pub world: World,
 }
 
 impl GetRunState for Game {
     fn get_runstate(&self) -> RunState {
         self.loop_controller.get_state()
     }
+}
+
+pub enum Query {
+    Motion,
 }
 
 impl Game {
@@ -101,39 +102,27 @@ impl Game {
         // todo 3. pass both, then readline args override config struct
         // todo 4. read a toml config file that can be overriden by readline
 
-        let world = World::default();
-        let mut resources = Resources::default();
-
-        // ? is this correct, to send a ref to a copy trait variable
-        resources.insert(WindowDims {
-            w: LOGICAL_WINDOW_WIDTH,
-            h: LOGICAL_WINDOW_HEIGHT,
-        });
-
-        let update_schedule = Schedule::builder()
-            .add_system(process_rotational_input_system())
-            .add_system(process_translational_input_system())
-            .flush()
-            .add_system(update_positions_system())
-            .flush()
-            .add_system(circle_collision_system())
-            .flush()
-            .add_system(world_boundary_bounce_rect_system())
-            .add_system(world_boundary_bounce_circle_system())
-            .build();
-
-        // let render_schedule = Schedule::builder().add_system(render_system()).build();
+        // let update_schedule = Schedule::builder()
+        //     .add_system(process_rotational_input_system())
+        //     .add_system(process_translational_input_system())
+        //     .flush()
+        //     .add_system(update_positions_system())
+        //     .flush()
+        //     .add_system(circle_collision_system())
+        //     .flush()
+        //     .add_system(world_boundary_bounce_rect_system())
+        //     .add_system(world_boundary_bounce_circle_system())
+        //     .build();
 
         let loop_controller = RunController::new();
+
+        let mut world = World::new();
 
         dev!("INIT fin");
 
         Ok(Self {
             loop_controller,
             world,
-            update_schedule,
-            resources,
-            key_states: HashMap::new(),
             input: WinitInputHelper::new(),
         })
     }
@@ -143,16 +132,16 @@ impl Game {
 
         // PLAYER ENTITY
         // todo use tag
-        let _ = self.world.push((
+        let _ = self.world.spawn((
+            HumanInputCpt {},
             TransformCpt {
                 position: Vec2::new(300.0, 300.0),
-                rotation: 0.0,
+                heading: 0.0,
                 scale: Vec2::new(1.0, 1.0),
             },
-            RigidBodyCpt {
-                velocity: Vec2::new(0.0, 0.0),
-            },
-            // BoxColliderCpt { w: 20.0, h: 20.0 },
+            RigidBodyCpt::new(),     // current velocity, used for physics
+            RotatableBodyCpt::new(), // curent turn rate, used for physics
+            MoveAttributesCpt::new(),
             CircleColliderCpt { r: 15.0 },
             ColorBodyCpt {
                 primary: Color::RGB(0, 255, 0),
@@ -162,20 +151,21 @@ impl Game {
                 turn_sign: None,
                 is_thrusting: false,
             },
-            MovementStatsCpt {
-                speed: 250f32,
-                turn_rate: 0.1f32,
+            ProjectileEmitterCpt {
+                projectile_velocity: Vec2::new(0., 0.),
+                cooldown: 250,
+                projectile_duration: Duration::new(0, 3000_000_000),
+                hit_damage: 10,
+                is_friendly: true,
+                last_emission_time: None,
             },
-            HumanInputCpt {},
         ));
 
         // BATCH ADD ENTS
         // spawn_buncha_particles(&mut self.world);
         // spawn_buncha_circles(&mut self.world);
         // spawn_buncha_squares(&mut self.world);
-        self.world.push(gen_circloid());
 
-        self.resources.insert(INIT_DT);
         dev!("SETUP fin");
     }
 
@@ -185,9 +175,12 @@ impl Game {
     }
 
     pub fn update(&mut self, dt: Dt) {
-        self.resources.insert(dt);
-        self.update_schedule
-            .execute(&mut self.world, &mut self.resources);
+        // process rotational control
+        // update positions
+        let runstate = self.get_runstate();
+        system_process_ship_controls(&mut self.world, runstate, &self.input);
+        system_integrate_rotation(&mut self.world, &dt);
+        system_integrate_translation(&mut self.world, &dt);
     }
 
     pub fn render(&mut self, pixels: &mut Pixels, dbg_ctx: &DebugContext) {
@@ -197,31 +190,53 @@ impl Game {
         draw_boundary(frame);
 
         // draw circle coll ship
-        let mut query = <(
-            &TransformCpt,
-            &CircleColliderCpt,
-            &ColorBodyCpt,
-            &RotationalInputCpt,
-        )>::query()
-        .filter(component::<HumanInputCpt>());
+        // let mut query = <(
+        //     &TransformCpt,
+        //     &CircleColliderCpt,
+        //     &ColorBodyCpt,
+        //     &RotationalInputCpt,
+        // )>::query()
+        // .filter(component::<HumanInputCpt>());
 
-        for (transform, collision_circle, colorbody, rotational) in query.iter(&self.world) {
+        // for (transform, collision_circle, colorbody, rotational) in query.iter(&self.world) {
+        //     draw_ship_circle_collision(transform, collision_circle, colorbody, frame);
+        // }
+        for (_id, (transform, collision_circle, colorbody)) in
+            self.world
+                .query_mut::<(&TransformCpt, &CircleColliderCpt, &ColorBodyCpt)>()
+        {
             draw_ship_circle_collision(transform, collision_circle, colorbody, frame);
         }
+        // draw_ship_circle_collision(
+        //     &TransformCpt::new(),
+        //     &CircleColliderCpt::new(),
+        //     &ColorBodyCpt::new(),
+        //     frame,
+        // );
+
+        // for (id, (transform, rigidbody)) in world.query_mut::<(&mut TransformCpt, &RigidBodyCpt)>() {
+        //     for (id, (transform, collision_circle, colorbody, rotational)) in self.world.query_mut::<(
+        //         &TransformCpt,
+        //         &CircleColliderCpt,
+        //         &ColorBodyCpt,
+        //         &RotationalInputCpt,
+        //     )>() {
+        //         draw_ship_circle_collision(transform, collision_circle, colorbody, frame);
+        //     }
 
         // draw circloids
-        let mut query = <(&TransformCpt, &CircleColliderCpt, &ColorBodyCpt)>::query()
-            .filter(!component::<HumanInputCpt>());
+        // let mut query = <(&TransformCpt, &CircleColliderCpt, &ColorBodyCpt)>::query()
+        //     .filter(!component::<HumanInputCpt>());
 
-        for (transform, collision_circle, colorbody) in query.iter(&self.world) {
-            draw_circle(
-                frame,
-                transform.position.x as i32,
-                transform.position.y as i32,
-                collision_circle.r as i32,
-                colorbody.primary,
-            );
-        }
+        // for (transform, collision_circle, colorbody) in query.iter(&self.world) {
+        //     draw_circle(
+        //         frame,
+        //         transform.position.x as i32,
+        //         transform.position.y as i32,
+        //         collision_circle.r as i32,
+        //         colorbody.primary,
+        //     );
+        // }
 
         // draw box coll ship
         // let mut query = <(
@@ -240,22 +255,22 @@ impl Game {
             // for (transform, collision_area) in query.iter(&self.world) {
             //     draw_collision_box(transform, collision_area, frame);
             // }
-            let mut query = <(&TransformCpt, &CircleColliderCpt)>::query();
-            for (transform, collision_circle) in query.iter(&self.world) {
-                draw_collision_circle(transform, collision_circle, frame);
-            }
+            // let mut query = <(&TransformCpt, &CircleColliderCpt)>::query();
+            // for (transform, collision_circle) in query.iter(&self.world) {
+            //     draw_collision_circle(transform, collision_circle, frame);
+            // }
         }
 
         // draw boxoids
-        let mut query = <(&TransformCpt, &BoxColliderCpt, &ColorBodyCpt)>::query()
-            .filter(!component::<HumanInputCpt>());
-        for (transform, ca, colorbody) in query.iter(&self.world) {
-            if ca.w == 1. {
-                draw_particle(transform, colorbody, frame);
-            } else {
-                draw_box(transform, colorbody, frame);
-            }
-        }
+        // let mut query = <(&TransformCpt, &BoxColliderCpt, &ColorBodyCpt)>::query()
+        //     .filter(!component::<HumanInputCpt>());
+        // for (transform, ca, colorbody) in query.iter(&self.world) {
+        //     if ca.w == 1. {
+        //         draw_particle(transform, colorbody, frame);
+        //     } else {
+        //         draw_box(transform, colorbody, frame);
+        //     }
+        // }
 
         // // black hole
         // draw_circle(frame, 200, 350, 60, WHITE);
@@ -269,23 +284,23 @@ impl Game {
     }
 
     fn process_player_control_keys(&mut self) {
-        let mut query = <(&HumanInputCpt, &mut RotationalInputCpt)>::query();
+        // let mut query = <(&HumanInputCpt, &mut RotationalInputCpt)>::query();
 
-        let input = &self.input;
-        let runstate = self.get_runstate();
+        // let input = &self.input;
+        // let runstate = self.get_runstate();
 
-        for (_human, mut rotational_input) in query.iter_mut(&mut self.world) {
-            set_rotational_input(input, runstate, &mut rotational_input);
-        }
+        // for (_human, mut rotational_input) in query.iter_mut(&mut self.world) {
+        //     set_rotational_input(input, runstate, &mut rotational_input);
+        // }
 
-        if self.input.key_pressed(VirtualKeyCode::Space)
-            || self.input.key_held(VirtualKeyCode::Space)
-        {
-            let mut query = <&mut CraftActionStateCpt>::query();
-            for state in query.iter_mut(&mut self.world) {
-                state.is_firing_primary = true;
-            }
-        }
+        // if self.input.key_pressed(VirtualKeyCode::Space)
+        //     || self.input.key_held(VirtualKeyCode::Space)
+        // {
+        //     let mut query = <&mut CraftActionStateCpt>::query();
+        //     for state in query.iter_mut(&mut self.world) {
+        //         state.is_firing_primary = true;
+        //     }
+        // }
     }
 
     fn process_dbg_keys(&mut self, dbg_ctx: &mut DebugContext) {
@@ -335,7 +350,7 @@ fn gen_particle() -> (TransformCpt, RigidBodyCpt, BoxColliderCpt, ColorBodyCpt) 
                 rng.gen::<f32>() * LOGICAL_WINDOW_WIDTH,
                 rng.gen::<f32>() * LOGICAL_WINDOW_HEIGHT,
             ),
-            rotation: 0.0,
+            heading: 0.0,
             scale: Vec2::new(1.0, 1.0),
         },
         RigidBodyCpt {
@@ -365,7 +380,7 @@ pub fn gen_boxoid() -> (TransformCpt, RigidBodyCpt, BoxColliderCpt, ColorBodyCpt
                 rng.gen::<f32>() * LOGICAL_WINDOW_WIDTH,
                 rng.gen::<f32>() * LOGICAL_WINDOW_HEIGHT,
             ),
-            rotation: 0.0,
+            heading: 0.0,
             scale: Vec2::new(1.0, 1.0),
         },
         RigidBodyCpt {
@@ -394,7 +409,7 @@ fn gen_circloid() -> (TransformCpt, RigidBodyCpt, CircleColliderCpt, ColorBodyCp
                 rng.gen::<f32>() * LOGICAL_WINDOW_WIDTH,
                 rng.gen::<f32>() * LOGICAL_WINDOW_HEIGHT,
             ),
-            rotation: 0.0,
+            heading: 0.0,
             scale: Vec2::new(1.0, 1.0),
         },
         RigidBodyCpt {
@@ -417,47 +432,13 @@ pub fn gen_circloids(n: i32) -> Vec<(TransformCpt, RigidBodyCpt, CircleColliderC
 }
 
 fn spawn_buncha_particles(world: &mut World) {
-    let _: &[Entity] = world.extend(gen_particles(1000));
+    // let _: &[Entity] = world.extend(gen_particles(1000));
 }
 
 fn spawn_buncha_boxoids(world: &mut World) {
-    let _: &[Entity] = world.extend(gen_boxoids(12));
+    // let _: &[Entity] = world.extend(gen_boxoids(12));
 }
 
 fn spawn_buncha_circloids(world: &mut World) {
-    let _: &[Entity] = world.extend(gen_circloids(5));
-}
-
-fn set_rotational_input(
-    input: &WinitInputHelper,
-    runstate: RunState,
-    rotational_input: &mut RotationalInputCpt,
-) {
-    // let input = &self.input;
-
-    if runstate == RunState::Running {
-        // HANDLE SINGLE MOVE KEYS
-        if input.key_pressed(VirtualKeyCode::D) || input.key_held(VirtualKeyCode::D) {
-            // set_input_turn(Some(Turn::Right), &mut self.world);
-            rotational_input.turn_sign = Some(Turn::Right);
-        }
-        if input.key_pressed(VirtualKeyCode::A) || input.key_held(VirtualKeyCode::A) {
-            // set_input_turn(Some(Turn::Left), &mut self.world);
-            rotational_input.turn_sign = Some(Turn::Left);
-        }
-        if input.key_pressed(VirtualKeyCode::W) || input.key_held(VirtualKeyCode::W) {
-            // set_input_thrust(true, &mut self.world);
-            rotational_input.is_thrusting = true;
-        }
-    }
-
-    // HANDLE KEY UPS
-    if input.key_released(VirtualKeyCode::D) || input.key_released(VirtualKeyCode::A) {
-        // set_input_turn(None, &mut self.world);
-        rotational_input.turn_sign = None;
-    }
-    if input.key_released(VirtualKeyCode::W) {
-        // set_input_thrust(false, &mut self.world);
-        rotational_input.is_thrusting = false;
-    }
+    // let _: &[Entity] = world.extend(gen_circloids(5));
 }

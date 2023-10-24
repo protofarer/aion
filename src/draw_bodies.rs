@@ -31,10 +31,10 @@ pub fn draw_ship_circle_collision(
     let mut x3 = xc + r;
     let mut y3 = yc;
 
-    (x1, y1) = rotate_point(x1, y1, transform.rotation, xc, yc);
-    (xm, ym) = rotate_point(xm, ym, transform.rotation, xc, yc);
-    (x2, y2) = rotate_point(x2, y2, transform.rotation, xc, yc);
-    (x3, y3) = rotate_point(x3, y3, transform.rotation, xc, yc);
+    (x1, y1) = rotate_point(x1, y1, transform.heading, xc, yc);
+    (xm, ym) = rotate_point(xm, ym, transform.heading, xc, yc);
+    (x2, y2) = rotate_point(x2, y2, transform.heading, xc, yc);
+    (x3, y3) = rotate_point(x3, y3, transform.heading, xc, yc);
 
     // Draw the triangle
     draw_line(
@@ -101,10 +101,10 @@ pub fn draw_ship_square(
     let cx = x + r;
     let cy = y + r;
 
-    (x1, y1) = rotate_point(x1, y1, transform.rotation, cx, cy);
-    (xm, ym) = rotate_point(xm, ym, transform.rotation, cx, cy);
-    (x2, y2) = rotate_point(x2, y2, transform.rotation, cx, cy);
-    (x3, y3) = rotate_point(x3, y3, transform.rotation, cx, cy);
+    (x1, y1) = rotate_point(x1, y1, transform.heading, cx, cy);
+    (xm, ym) = rotate_point(xm, ym, transform.heading, cx, cy);
+    (x2, y2) = rotate_point(x2, y2, transform.heading, cx, cy);
+    (x3, y3) = rotate_point(x3, y3, transform.heading, cx, cy);
 
     // Draw the triangle
     draw_line(
@@ -162,10 +162,10 @@ pub fn draw_box(transform: &TransformCpt, colorbody: &ColorBodyCpt, frame: &mut 
     let cx = x1 + (r / 2.0);
     let cy = y1 + (r / 2.0);
 
-    (x1, y1) = rotate_point(x1, y1, transform.rotation, cx, cy);
-    (x2, y2) = rotate_point(x2, y2, transform.rotation, cx, cy);
-    (x3, y3) = rotate_point(x3, y3, transform.rotation, cx, cy);
-    (x4, y4) = rotate_point(x4, y4, transform.rotation, cx, cy);
+    (x1, y1) = rotate_point(x1, y1, transform.heading, cx, cy);
+    (x2, y2) = rotate_point(x2, y2, transform.heading, cx, cy);
+    (x3, y3) = rotate_point(x3, y3, transform.heading, cx, cy);
+    (x4, y4) = rotate_point(x4, y4, transform.heading, cx, cy);
 
     // Draw the triangle
     draw_line(

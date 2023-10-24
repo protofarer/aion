@@ -51,19 +51,6 @@ pub fn draw_line(x0: i32, y0: i32, x1: i32, y1: i32, color: Color, frame: &mut [
     }
 }
 
-// pub fn draw_circle(xc: i32, yc: i32, r: i32, color: Color, frame: &mut [u8]) {
-//     // ? naively, the radius and the sweep increment are interconnected with how to precisely draw the circle
-//     // ? calculate sweep increment based on radius
-//     // eg r=1 then sweep increment 45 deg
-//     // eg r=2
-
-//     // for i in 0..=longer_side_len as i32 {
-//     //     draw_pixel(x.round() as i32, y.round() as i32, color, frame);
-//     //     x += dx;
-//     //     y += dy;
-//     // }
-// }
-
 pub fn draw_circle(frame: &mut [u8], x_center: i32, y_center: i32, radius: i32, color: Color) {
     let mut x = radius;
     let mut y = 0;

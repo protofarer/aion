@@ -4,7 +4,15 @@ use std::time;
 
 const N_FRAME_LOGS: usize = 200;
 
-pub struct Dt(time::Duration);
+pub struct Dt(pub time::Duration);
+impl Dt {
+    pub fn secs(&self) -> f32 {
+        self.0.as_secs_f32()
+    }
+    pub fn micros(&self) -> u128 {
+        self.0.as_micros()
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct FrameLogger<T>

@@ -5,14 +5,14 @@ use std::time;
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct TransformCpt {
     pub position: Vec2,
-    pub rotation: f32,
+    pub heading: f32,
     pub scale: Vec2,
 }
 impl TransformCpt {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             position: Vec2::new(100., 100.),
-            rotation: 0.,
+            heading: 0.,
             scale: Vec2::new(1., 1.),
         }
     }
@@ -23,35 +23,20 @@ pub struct RigidBodyCpt {
     pub velocity: Vec2,
 }
 impl RigidBodyCpt {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self {
-            velocity: Vec2::new(100., 0.),
+            velocity: Vec2::new(1., 0.),
         }
     }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct BoxColliderCpt {
-    pub w: f32,
-    pub h: f32,
+pub struct RotatableBodyCpt {
+    pub rotation_rate: f32,
 }
-
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct CircleColliderCpt {
-    pub r: f32,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct ColorBodyCpt {
-    pub primary: Color,
-    pub secondary: Color,
-}
-impl ColorBodyCpt {
-    fn new() -> Self {
-        Self {
-            primary: WHITE,
-            secondary: BLUE,
-        }
+impl RotatableBodyCpt {
+    pub fn new() -> Self {
+        Self { rotation_rate: 1.0 }
     }
 }
 
@@ -67,7 +52,7 @@ pub struct RotationalInputCpt {
     pub is_thrusting: bool,
 }
 impl RotationalInputCpt {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             turn_sign: None,
             is_thrusting: false,
@@ -76,15 +61,15 @@ impl RotationalInputCpt {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct MovementStatsCpt {
+pub struct MoveAttributesCpt {
     pub speed: f32,
     pub turn_rate: f32,
 }
-impl MovementStatsCpt {
-    fn new() -> Self {
+impl MoveAttributesCpt {
+    pub fn new() -> Self {
         Self {
-            speed: 100.0,
-            turn_rate: 0.1,
+            speed: 400.0,
+            turn_rate: 10.0,
         }
     }
 }
@@ -93,11 +78,41 @@ impl MovementStatsCpt {
 pub struct HumanInputCpt {}
 
 #[derive(Clone, Copy, Debug, PartialEq)]
+pub struct BoxColliderCpt {
+    pub w: f32,
+    pub h: f32,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct CircleColliderCpt {
+    pub r: f32,
+}
+impl CircleColliderCpt {
+    pub fn new() -> Self {
+        Self { r: 10.0 }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ColorBodyCpt {
+    pub primary: Color,
+    pub secondary: Color,
+}
+impl ColorBodyCpt {
+    pub fn new() -> Self {
+        Self {
+            primary: WHITE,
+            secondary: BLUE,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct TranslationalInputCpt {
     pub direction: Option<Direction>,
 }
 impl TranslationalInputCpt {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self { direction: None }
     }
 }
@@ -108,7 +123,7 @@ pub struct CraftActionStateCpt {
     pub is_firing_secondary: bool,
 }
 impl CraftActionStateCpt {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             is_firing_primary: false,
             is_firing_secondary: false,
@@ -121,7 +136,7 @@ pub struct MindStateCpt {
     pub is_using_primary: bool,
 }
 impl MindStateCpt {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             is_sensing: false,
             is_using_primary: false,
@@ -142,41 +157,41 @@ pub enum Direction {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct ProjectileEmitter {
-    projectile_velocity: nalgebra_glm::Vec2,
-    repeat_frequency: i32,
-    projectile_duration: i32,
-    hit_damage: i32,
-    is_friendly: bool,
-    last_emission_time: time::Instant,
+pub struct ProjectileEmitterCpt {
+    pub projectile_velocity: nalgebra_glm::Vec2,
+    pub cooldown: i32,
+    pub projectile_duration: time::Duration,
+    pub hit_damage: i32,
+    pub is_friendly: bool,
+    pub last_emission_time: Option<time::Instant>,
 }
 
-impl ProjectileEmitter {
-    fn new() -> Self {
+impl ProjectileEmitterCpt {
+    pub fn new() -> Self {
         Self {
             projectile_velocity: Vec2::new(0., 0.),
-            repeat_frequency: 0,
-            projectile_duration: 10000,
+            cooldown: 0,
+            projectile_duration: time::Duration::new(10, 0),
             hit_damage: 10,
             is_friendly: false,
-            last_emission_time: time::Instant::now(),
+            last_emission_time: None,
         }
     }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct Projectile {
-    is_friendly: bool,
-    hit_damage: i32,
-    duration: time::Instant,
-    start_time: time::Instant,
+pub struct ProjectileCpt {
+    pub is_friendly: bool,
+    pub hit_damage: i32,
+    pub duration: time::Duration,
+    pub start_time: time::Instant,
 }
-impl Projectile {
-    fn new() -> Self {
+impl ProjectileCpt {
+    pub fn new() -> Self {
         Self {
             is_friendly: false,
             hit_damage: 0,
-            duration: time::Instant::now(),
+            duration: time::Duration::new(0, 3_000_000_000),
             start_time: time::Instant::now(),
         }
     }

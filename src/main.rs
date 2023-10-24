@@ -34,7 +34,7 @@ use winit::{
 };
 use winit_input_helper::WinitInputHelper;
 
-pub const TITLE: &str = "Aion";
+pub const TITLE: &'static str = "Aion";
 pub const LOGICAL_WINDOW_WIDTH: f32 = 960.;
 pub const LOGICAL_WINDOW_HEIGHT: f32 = 540.;
 pub const PHYSICAL_WINDOW_WIDTH: f32 = 1920.;
