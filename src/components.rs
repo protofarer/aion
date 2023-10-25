@@ -68,8 +68,8 @@ pub struct MoveAttributesCpt {
 impl MoveAttributesCpt {
     pub fn new() -> Self {
         Self {
-            speed: 400.0,
-            turn_rate: 10.0,
+            speed: 600.0,
+            turn_rate: 12.0,
         }
     }
 }

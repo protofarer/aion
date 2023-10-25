@@ -2,7 +2,7 @@ use std::time::{self, Duration};
 
 use crate::game::{RunState, WindowDims};
 use crate::time::Dt;
-use crate::{components::*, dev};
+use crate::{components::*, dev, LOGICAL_WINDOW_HEIGHT, LOGICAL_WINDOW_WIDTH};
 use hecs::{Query, QueryBorrow, With, World};
 use nalgebra_glm::Vec2;
 use winit::event::VirtualKeyCode;
@@ -188,6 +188,34 @@ pub fn system_integrate_translation(world: &mut World, dt: &Dt) {
 //     }
 // }
 
+// only for CircleColliders
+pub fn system_boundary_restrict_circle(world: &mut World) {
+    for (id, (transform, rigidbody, collision_circle)) in
+        world.query_mut::<(&mut TransformCpt, &mut RigidBodyCpt, &CircleColliderCpt)>()
+    {
+        if transform.position.x + collision_circle.r as f32 >= LOGICAL_WINDOW_WIDTH as f32
+            || transform.position.x < 0f32
+        {
+            rigidbody.velocity.x = -rigidbody.velocity.x;
+        }
+        if transform.position.x - collision_circle.r < 0f32 {
+            transform.position.x = 0f32 + collision_circle.r;
+        } else if transform.position.x + collision_circle.r as f32 >= LOGICAL_WINDOW_WIDTH as f32 {
+            transform.position.x = (LOGICAL_WINDOW_WIDTH - collision_circle.r) as f32;
+        }
+
+        if transform.position.y + collision_circle.r as f32 >= LOGICAL_WINDOW_HEIGHT as f32
+            || transform.position.y < 0f32
+        {
+            rigidbody.velocity.y = -rigidbody.velocity.y;
+        }
+        if transform.position.y - collision_circle.r < 0f32 {
+            transform.position.y = 0f32 + collision_circle.r;
+        } else if transform.position.y + collision_circle.r as f32 >= LOGICAL_WINDOW_HEIGHT as f32 {
+            transform.position.y = (LOGICAL_WINDOW_HEIGHT - collision_circle.r) as f32;
+        }
+    }
+}
 // #[system(for_each)]
 // pub fn world_boundary_bounce_rect(
 //     transform: &mut TransformCpt,

@@ -165,6 +165,7 @@ impl Game {
         system_process_ship_controls(&mut self.world, runstate, &self.input);
         system_integrate_rotation(&mut self.world, &dt);
         system_integrate_translation(&mut self.world, &dt);
+        system_boundary_restrict_circle(&mut self.world);
     }
 
     pub fn render(&mut self, pixels: &mut Pixels, dbg_ctx: &DebugContext) {
