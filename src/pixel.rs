@@ -28,6 +28,11 @@ impl Color {
         ])
     }
 }
+impl Default for Color {
+    fn default() -> Self {
+        WHITE
+    }
+}
 
 pub const WHITE: Color = Color::new([255, 255, 255, 255]);
 pub const BLACK: Color = Color::new([0, 0, 0, 255]);

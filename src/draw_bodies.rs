@@ -1,7 +1,28 @@
+use nalgebra_glm::Vec2;
+
 use crate::{
-    components::*, draw::*, geom::rotate_point, pixel::*, LOGICAL_WINDOW_HEIGHT,
+    components::*, dev, draw::*, geom::rotate_point, pixel::*, LOGICAL_WINDOW_HEIGHT,
     LOGICAL_WINDOW_WIDTH,
 };
+
+pub fn generate_ship_lines() -> Vec<(Vec2, Vec2)> {
+    // relative to center (circle)
+    // todo incorporate circle_collider.r
+    let r = 15.;
+
+    let dy = r * (nalgebra_glm::pi::<f32>() / 4.0).sin();
+    let dx = r * (nalgebra_glm::pi::<f32>() / 4.0).cos();
+
+    let pts = [(-dx, -dy), (-0.5 * r, 0.), (-dx, dy), (r, 0.), (-dx, -dy)];
+
+    let mut v = vec![];
+    for i in 0..(pts.len() - 1) {
+        let p1 = Vec2::new(pts[i].0, pts[i].1);
+        let p2 = Vec2::new(pts[i + 1].0, pts[i + 1].1);
+        v.push((p1, p2));
+    }
+    v
+}
 
 pub fn draw_ship_circle_collision(
     transform: &TransformCpt,
@@ -141,9 +162,71 @@ pub fn draw_ship_square(
         frame,
     );
 }
-pub fn draw_box(transform: &TransformCpt, colorbody: &ColorBodyCpt, frame: &mut [u8]) {
-    let r = 15.0;
 
+pub fn draw_body_line(
+    transform: &TransformCpt,
+    lines: Vec<(Vec2, Vec2)>,
+    colorbody: &ColorBodyCpt,
+    frame: &mut [u8],
+) {
+    println!("in draw body line");
+    let transformed_line_endpoint_pairs: Vec<((f32, f32), (f32, f32))> = lines
+        .iter()
+        .map(|(pt1, pt2)| {
+            (
+                Vec2::new(pt1.x + transform.position.x, pt1.y + transform.position.y),
+                Vec2::new(pt2.x + transform.position.x, pt2.y + transform.position.y),
+            )
+        })
+        .map(|(t_pt1, t_pt2)| {
+            (
+                rotate_point(
+                    t_pt1.x,
+                    t_pt1.y,
+                    transform.heading,
+                    transform.position.x,
+                    transform.position.y,
+                ),
+                rotate_point(
+                    t_pt2.x,
+                    t_pt2.y,
+                    transform.heading,
+                    transform.position.x,
+                    transform.position.y,
+                ),
+            )
+        })
+        .collect();
+    for (vec1, vec2) in transformed_line_endpoint_pairs {
+        draw_line(
+            vec1.0.round() as i32,
+            vec1.1.round() as i32,
+            vec2.0.round() as i32,
+            vec2.1.round() as i32,
+            colorbody.primary,
+            frame,
+        );
+    }
+}
+
+pub fn draw_body_circle(
+    transform: &TransformCpt,
+    r: f32,
+    colorbody: &ColorBodyCpt,
+    frame: &mut [u8],
+) {
+    dev!("draw body circ");
+    draw_circle(
+        frame,
+        (transform.position.x) as i32,
+        (transform.position.y) as i32,
+        r as i32,
+        colorbody.primary,
+    );
+}
+
+pub fn draw_box(transform: &TransformCpt, colorbody: &ColorBodyCpt, frame: &mut [u8]) {
+    let r = 15.;
     let x = transform.position.x;
     let y = transform.position.y;
 

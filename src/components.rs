@@ -1,8 +1,8 @@
 use crate::pixel::{Color, BLUE, CYAN, GREEN, GREY, MAGENTA, ORANGE, RED, WHITE, YELLOW};
 use nalgebra_glm::Vec2;
-use std::time;
+use std::{default, time};
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Default)]
 pub struct TransformCpt {
     pub position: Vec2,
     pub heading: f32,
@@ -18,7 +18,7 @@ impl TransformCpt {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Default)]
 pub struct RigidBodyCpt {
     pub velocity: Vec2,
 }
@@ -30,7 +30,7 @@ impl RigidBodyCpt {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Default)]
 pub struct RotatableBodyCpt {
     pub rotation_rate: f32,
 }
@@ -40,13 +40,14 @@ impl RotatableBodyCpt {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Default)]
 pub enum Turn {
+    #[default]
     Left,
     Right,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Default)]
 pub struct RotationalInputCpt {
     pub turn_sign: Option<Turn>,
     pub is_thrusting: bool,
@@ -60,7 +61,7 @@ impl RotationalInputCpt {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Default)]
 pub struct MoveAttributesCpt {
     pub speed: f32,
     pub turn_rate: f32,
@@ -68,22 +69,22 @@ pub struct MoveAttributesCpt {
 impl MoveAttributesCpt {
     pub fn new() -> Self {
         Self {
-            speed: 600.0,
+            speed: 500.0,
             turn_rate: 12.0,
         }
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Default)]
 pub struct HumanInputCpt {}
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Default)]
 pub struct BoxColliderCpt {
     pub w: f32,
     pub h: f32,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Default)]
 pub struct CircleColliderCpt {
     pub r: f32,
 }
@@ -93,7 +94,7 @@ impl CircleColliderCpt {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Default)]
 pub struct ParticleColliderCpt {}
 
 impl ParticleColliderCpt {
@@ -102,7 +103,7 @@ impl ParticleColliderCpt {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Default)]
 pub struct ColorBodyCpt {
     pub primary: Color,
     pub secondary: Color,
@@ -170,7 +171,7 @@ impl ColorBodyCpt {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Default)]
 pub struct TranslationalInputCpt {
     pub direction: Option<Direction>,
 }
@@ -180,7 +181,7 @@ impl TranslationalInputCpt {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Default)]
 pub struct CraftActionStateCpt {
     pub is_firing_primary: bool,
     pub is_firing_secondary: bool,
@@ -193,7 +194,7 @@ impl CraftActionStateCpt {
         }
     }
 }
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Default)]
 pub struct MindStateCpt {
     pub is_sensing: bool,
     pub is_using_primary: bool,
@@ -207,7 +208,7 @@ impl MindStateCpt {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Default)]
 pub struct ProjectileEmitterCpt {
     pub projectile_velocity: nalgebra_glm::Vec2,
     pub cooldown: i32,
@@ -220,9 +221,9 @@ pub struct ProjectileEmitterCpt {
 impl ProjectileEmitterCpt {
     pub fn new() -> Self {
         Self {
-            projectile_velocity: Vec2::new(0., 0.),
-            cooldown: 0,
-            projectile_duration: time::Duration::new(10, 0),
+            projectile_velocity: Vec2::new(300., 0.),
+            cooldown: 250,
+            projectile_duration: time::Duration::new(7, 0),
             hit_damage: 10,
             is_friendly: false,
             last_emission_time: None,
@@ -230,12 +231,12 @@ impl ProjectileEmitterCpt {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Default)]
 pub struct ProjectileCpt {
     pub is_friendly: bool,
     pub hit_damage: i32,
     pub duration: time::Duration,
-    pub start_time: time::Instant,
+    pub start_time: Option<time::Instant>,
 }
 impl ProjectileCpt {
     pub fn new() -> Self {
@@ -243,19 +244,56 @@ impl ProjectileCpt {
             is_friendly: false,
             hit_damage: 0,
             duration: time::Duration::new(0, 3_000_000_000),
-            start_time: time::Instant::now(),
+            start_time: Some(time::Instant::now()),
         }
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Default)]
 pub enum Direction {
     N,
     NE,
+    #[default]
     E,
     SE,
     S,
     SW,
     W,
     NW,
+}
+
+pub enum DrawData {
+    R(f32),
+    Lines(Vec<(Vec2, Vec2)>),
+}
+
+impl DrawData {
+    pub fn new() -> DrawData {
+        DrawData::default_circle()
+    }
+    pub fn default_box() -> DrawData {
+        DrawData::Lines(vec![
+            (Vec2::new(-5., -5.), Vec2::new(5., -5.)),
+            (Vec2::new(5., -5.), Vec2::new(5., 5.)),
+            (Vec2::new(5., 5.), Vec2::new(-5., 5.)),
+            (Vec2::new(-5., 5.), Vec2::new(-5., -5.)),
+        ])
+    }
+    pub fn default_circle() -> DrawData {
+        DrawData::R(10.)
+    }
+}
+
+pub struct DrawBodyCpt {
+    pub data: DrawData,
+    pub colorbody: ColorBodyCpt,
+}
+
+impl DrawBodyCpt {
+    pub fn new() -> DrawBodyCpt {
+        DrawBodyCpt {
+            colorbody: ColorBodyCpt::new(),
+            data: DrawData::new(),
+        }
+    }
 }

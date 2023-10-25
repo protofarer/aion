@@ -1,4 +1,5 @@
 #![allow(unused)]
+mod avatar;
 mod components;
 mod draw;
 mod draw_bodies;

@@ -11,6 +11,7 @@ use winit::event_loop::EventLoop;
 use winit::window::Window;
 use winit_input_helper::WinitInputHelper;
 
+use crate::avatar::{Circloid, HumanShip};
 use crate::draw::{draw_circle, draw_pixel, draw_rect};
 use crate::geom::*;
 use crate::gui::Framework;
@@ -110,48 +111,14 @@ impl Game {
 
         // PLAYER ENTITY
         // todo use tag
-        let _ = self.world.spawn((
-            HumanInputCpt {},
-            TransformCpt::new(),
-            RigidBodyCpt::new(),     // current velocity, used for physics
-            RotatableBodyCpt::new(), // curent turn rate, used for physics
-            MoveAttributesCpt::new(),
-            CircleColliderCpt { r: 15.0 },
-            ColorBodyCpt {
-                primary: Color::RGB(0, 255, 0),
-                secondary: Color::RGB(0, 0, 0),
-            },
-            RotationalInputCpt::new(),
-            ProjectileEmitterCpt {
-                projectile_velocity: Vec2::new(0., 0.),
-                cooldown: 250,
-                projectile_duration: Duration::new(0, 3000_000_000),
-                hit_damage: 10,
-                is_friendly: true,
-                last_emission_time: None,
-            },
-        ));
+        let _ = self.world.spawn(HumanShip::new());
 
         // spawn_buncha_particles(&mut self.world);
         // spawn_buncha_circles(&mut self.world);
         // spawn_buncha_squares(&mut self.world);
 
         // spawn incoming circloids
-        self.world.spawn((
-            TransformCpt {
-                position: Vec2::new(LOGICAL_WINDOW_WIDTH - 100., 100.),
-                heading: 0.,
-                scale: Vec2::new(1.0, 1.0),
-            },
-            RigidBodyCpt {
-                velocity: Vec2::new(0., 100.),
-            },
-            CircleColliderCpt { r: 30.0 },
-            ColorBodyCpt {
-                primary: Color::RGB(160, 160, 0),
-                secondary: Color::RGB(0, 0, 0),
-            },
-        ));
+        // self.world.spawn(Circloid::new());
         // self.world.spawn((
         //     TransformCpt {
         //         position: Vec2::new(LOGICAL_WINDOW_WIDTH - 100., 300.),
@@ -182,7 +149,7 @@ impl Game {
                 is_friendly: false,
                 hit_damage: 0,
                 duration: time::Duration::new(5, 0),
-                start_time: time::Instant::now(),
+                start_time: Some(time::Instant::now()),
             },
             ParticleColliderCpt {},
             ColorBodyCpt {
@@ -194,7 +161,7 @@ impl Game {
         // persist it
         self.world.spawn((
             TransformCpt {
-                position: Vec2::new(LOGICAL_WINDOW_WIDTH - 300., 300.),
+                position: Vec2::new(LOGICAL_WINDOW_WIDTH - 300., 400.),
                 heading: 0.,
                 scale: Vec2::new(1.0, 1.0),
             },
@@ -205,7 +172,7 @@ impl Game {
                 is_friendly: false,
                 hit_damage: 0,
                 duration: time::Duration::new(10, 0),
-                start_time: time::Instant::now(),
+                start_time: Some(time::Instant::now()),
             },
             ParticleColliderCpt {},
             ColorBodyCpt {
@@ -255,18 +222,32 @@ impl Game {
         clear(frame);
         draw_boundary(frame);
 
-        for (_id, (transform, collision_circle, colorbody)) in self
+        // for (_id, (transform, collision_circle, colorbody)) in self
+        //     .world
+        //     .query_mut::<With<(&TransformCpt, &CircleColliderCpt, &ColorBodyCpt), &HumanInputCpt>>()
+        // {
+        //     draw_ship_circle_collision(transform, collision_circle, colorbody, frame);
+        // }
+
+        for (_id, (transform, collision_circle, drawbody)) in self
             .world
-            .query_mut::<With<(&TransformCpt, &CircleColliderCpt, &ColorBodyCpt), &HumanInputCpt>>()
+            .query_mut::<With<(&TransformCpt, &CircleColliderCpt, &DrawBodyCpt), &HumanInputCpt>>()
         {
-            draw_ship_circle_collision(transform, collision_circle, colorbody, frame);
+            match drawbody {
+                DrawBodyCpt { data, colorbody } => match data {
+                    DrawData::Lines(x) => {
+                        draw_body_line(transform, x.to_vec(), colorbody, frame);
+                    }
+                    DrawData::R(r) => {
+                        draw_body_circle(transform, *r, colorbody, frame);
+                    }
+                    _ => {}
+                },
+                _ => {}
+            }
+            // draw_body_line(transform, drawbody., colorbody, frame)
         }
-        for (_id, (transform, collision_circle, colorbody)) in self
-            .world
-            .query_mut::<Without<(&TransformCpt, &CircleColliderCpt, &ColorBodyCpt), &HumanInputCpt>>()
-        {
-            draw_circloid(transform, collision_circle, colorbody, frame);
-        }
+
         for (_id, (transform, colorbody)) in self
             .world
             .query_mut::<With<(&TransformCpt, &ColorBodyCpt), &ParticleColliderCpt>>()

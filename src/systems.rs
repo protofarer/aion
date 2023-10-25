@@ -17,13 +17,16 @@ pub fn system_process_ship_controls(
     input: &WinitInputHelper,
 ) {
     for (_id, (rotational_input, move_attributes, transform, rigidbody, rotatablebody)) in world
-        .query_mut::<(
-            &mut RotationalInputCpt,
-            &MoveAttributesCpt,
-            &mut TransformCpt,
-            &mut RigidBodyCpt,
-            &mut RotatableBodyCpt,
-        )>()
+        .query_mut::<With<
+            (
+                &mut RotationalInputCpt,
+                &MoveAttributesCpt,
+                &mut TransformCpt,
+                &mut RigidBodyCpt,
+                &mut RotatableBodyCpt,
+            ),
+            &HumanInputCpt,
+        >>()
     {
         set_rotational_input(input, runstate, rotational_input);
 
@@ -182,23 +185,28 @@ pub fn system_boundary_restrict_particle(world: &mut World) {
 
 // particles do not collide with each other
 pub fn system_particle_collision(world: &mut World) {
-    let mut entities: Vec<(Entity, TransformCpt, CircleColliderCpt)> = vec![];
-    // todo improve collecting entity and components, use chain method and
-    // collector https://docs.rs/hecs/latest/hecs/struct.QueryBorrow.html
-    for (entity, (transform, rigidbody)) in world.query_mut::<(&TransformCpt, &CircleColliderCpt)>()
-    {
-        entities.push((entity, *transform, *rigidbody));
-    }
+    let particle_data = world
+        .query::<With<&TransformCpt, &ParticleColliderCpt>>()
+        .iter()
+        .map(|(e, &tx)| (e, tx))
+        .collect::<Vec<_>>();
+
+    let circloid_data = world
+        .query::<(&TransformCpt, &CircleColliderCpt)>()
+        .iter()
+        .map(|(e, (&tx, &cx))| (e, tx, cx))
+        .collect::<Vec<_>>();
+
     let mut colliding_entities: Vec<&Entity> = vec![];
-    for (i, (entity1, tx1, cx1)) in entities.iter().enumerate() {
-        for (entity2, tx2, cx2) in entities[i + 1..].iter() {
-            let dx = tx2.position.x - tx1.position.x;
-            let dy = tx2.position.y - tx1.position.y;
+    for (i, (circloid, tx_c, cx_c)) in circloid_data.iter().enumerate() {
+        for (particle, tx_p) in particle_data.iter() {
+            let dx = tx_p.position.x - tx_c.position.x;
+            let dy = tx_p.position.y - tx_c.position.y;
             let dr = (dx.powf(2.0) + dy.powf(2.0)).sqrt();
-            if dr < (cx1.r + cx2.r) {
+            if dr <= (cx_c.r) {
                 dev!("COLLISION DETECTED");
-                colliding_entities.push(entity1);
-                colliding_entities.push(entity2);
+                colliding_entities.push(circloid);
+                colliding_entities.push(particle);
             }
         }
     }
