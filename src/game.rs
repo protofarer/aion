@@ -136,6 +136,7 @@ impl Game {
         // spawn_buncha_circles(&mut self.world);
         // spawn_buncha_squares(&mut self.world);
 
+        self.loop_controller.run();
         dev!("SETUP fin");
     }
 

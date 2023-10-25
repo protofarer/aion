@@ -5,6 +5,8 @@ mod draw_bodies;
 mod game;
 mod geom;
 mod gui;
+mod init;
+mod logging;
 mod pixel;
 mod systems;
 mod time;
@@ -17,15 +19,9 @@ use std::{
     time::{Duration, Instant},
 };
 
-use crate::{game::Game, gui::StateMonitor};
-use error_iter::ErrorIter as _;
-use game::{GetRunState, RunState};
-use game_loop::game_loop;
 use gui::Framework;
-use log::{error, info};
 use pixel::{Color, BLACK};
 use pixels::{Error, Pixels, SurfaceTexture};
-use time::FrameTimer;
 use winit::{
     dpi::LogicalSize,
     event::{ElementState, Event, KeyboardInput, VirtualKeyCode, WindowEvent},
@@ -33,6 +29,15 @@ use winit::{
     window::Window,
 };
 use winit_input_helper::WinitInputHelper;
+
+use gui::StateMonitor;
+use init::{init_gfx, init_window};
+use logging::log_error;
+use time::FrameTimer;
+
+use game::Game;
+use game::{GetRunState, RunState};
+use game_loop::game_loop;
 
 pub const TITLE: &'static str = "Aion";
 pub const LOGICAL_WINDOW_WIDTH: f32 = 960.;
@@ -42,60 +47,6 @@ pub const PHYSICAL_WINDOW_HEIGHT: f32 = 1080.;
 pub const INIT_DT: Duration = Duration::from_millis(16);
 const UPDATES_PER_SECOND: u32 = 120;
 const MAX_FRAME_TIME: f64 = 0.1;
-
-fn log_error<E: std::error::Error + 'static>(method_name: &str, err: E) {
-    error!("{method_name}() failed: {err}");
-    for source in err.sources().skip(1) {
-        error!("  Caused by: {source}");
-    }
-}
-
-fn init_window(event_loop: &EventLoop<()>) -> Window {
-    let logical_size = winit::dpi::LogicalSize::new(LOGICAL_WINDOW_WIDTH, LOGICAL_WINDOW_HEIGHT);
-    let physical_size = LogicalSize::new(PHYSICAL_WINDOW_WIDTH, PHYSICAL_WINDOW_HEIGHT);
-    winit::window::WindowBuilder::new()
-        .with_title(TITLE)
-        .with_inner_size(physical_size)
-        .with_min_inner_size(logical_size)
-        .build(&event_loop)
-        .unwrap()
-}
-
-fn init_gfx(
-    event_loop: &EventLoop<()>,
-    window: &Window,
-) -> Result<(Pixels, Framework), pixels::Error> {
-    let (pixels, framework) = {
-        let scale_factor = window.scale_factor() as f32;
-        let window_size = window.inner_size(); // Physical screen dims (scaled from logical)
-        let surface_texture = SurfaceTexture::new(window_size.width, window_size.height, &window);
-
-        let pixels = Pixels::new(
-            LOGICAL_WINDOW_WIDTH as u32,
-            LOGICAL_WINDOW_HEIGHT as u32,
-            surface_texture,
-        )?;
-
-        let framework = Framework::new(
-            event_loop,
-            window_size.width,
-            window_size.height,
-            scale_factor,
-            &pixels,
-        );
-
-        (pixels, framework)
-    };
-
-    Ok((pixels, framework))
-}
-
-#[macro_export]
-macro_rules! dev {
-    ($($arg:tt)*) => {
-        log::debug!(target: "DEV", $($arg)*);
-    }
-}
 
 pub struct DebugContext {
     is_on: bool,
@@ -127,39 +78,36 @@ fn main() {
     let event_loop = EventLoop::new();
     let window = init_window(&event_loop);
     let window = Arc::new(window);
-    // let mut input = WinitInputHelper::new();
 
     let (mut pixels, mut framework) = init_gfx(&event_loop, &window).unwrap();
 
     // data for update closure
-    let pixels1 = Rc::new(RefCell::new(pixels));
-    let pixels2 = Rc::clone(&pixels1);
+    let pixels_render = Rc::new(RefCell::new(pixels));
+    let pixels_input = Rc::clone(&pixels_render);
 
-    let framework1 = Rc::new(RefCell::new(framework));
-    let framework2 = Rc::clone(&framework1);
+    let framework_render = Rc::new(RefCell::new(framework));
+    let framework_input = Rc::clone(&framework_render);
 
-    let mut update_timer1 = Rc::new(RefCell::new(FrameTimer::new()));
-    let mut update_timer2 = Rc::clone(&update_timer1);
+    let mut update_timer = Rc::new(RefCell::new(FrameTimer::new()));
+    let mut update_timer_render = Rc::clone(&update_timer);
 
     let mut render_timer = FrameTimer::new();
 
     // data for update closure
-    let mut update_ctx = Box::new(UpdateContext {
-        update_timer: update_timer1,
-    });
+    let mut update_ctx = Box::new(UpdateContext { update_timer });
 
     // data for render closure
     let mut render_ctx = Box::new(RenderContext {
-        pixels: pixels1,
-        framework: framework1,
+        pixels: pixels_render,
+        framework: framework_render,
         render_timer: render_timer,
-        update_timer: update_timer2,
+        update_timer: update_timer_render,
     });
 
     // data for input closure
     let mut input_ctx = Box::new(InputContext {
-        pixels: pixels2,
-        framework: framework2,
+        pixels: pixels_input,
+        framework: framework_input,
     });
 
     let mut dbg_ctx = DebugContext {
@@ -178,7 +126,6 @@ fn main() {
     });
 
     game.setup();
-    game.loop_controller.run();
 
     game_loop(
         event_loop,
@@ -206,8 +153,6 @@ fn main() {
 
                 g.game.render(&mut pixels, &dbg_ctx_render.borrow());
 
-                // Prepare egui
-
                 let render_timer = &render_ctx.render_timer;
                 let update_timer2 = render_ctx.update_timer.borrow();
 
@@ -220,15 +165,14 @@ fn main() {
                     dbg_ctx: &mut dbg_ctx_gui.borrow_mut(),
                 };
 
-                framework.prepare(&g.window, gui_game_state);
+                framework.prepare(&g.window, gui_game_state); // Prepare egui
 
                 // Render everything together
                 let render_result = pixels.render_with(|encoder, render_target, context| {
                     // Render the world texture
                     context.scaling_renderer.render(encoder, render_target);
 
-                    // Render egui
-                    framework.render(encoder, render_target, context);
+                    framework.render(encoder, render_target, context); // Render egui
 
                     Ok(())
                 });
@@ -238,16 +182,6 @@ fn main() {
                     g.exit();
                 }
             }
-            ////////////////////////////////////////////////////////////////////
-            ////////////////////////////////////////////////////////////////////
-
-            // Sleep the main thread to limit drawing to the fixed time step.
-            // See: https://github.com/parasyte/pixels/issues/174
-
-            // let dt = TIME_STEP.as_secs_f64() - Time::now().sub(&g.current_instant());
-            // if dt > 0.0 {
-            //     std::thread::sleep(Duration::from_secs_f64(dt));
-            // }
         },
         // move not in original tuzz code
         move |g, event| {
