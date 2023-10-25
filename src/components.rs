@@ -1,4 +1,4 @@
-use crate::pixel::{Color, BLUE, WHITE};
+use crate::pixel::{Color, BLUE, CYAN, GREEN, GREY, MAGENTA, ORANGE, RED, WHITE, YELLOW};
 use nalgebra_glm::Vec2;
 use std::time;
 
@@ -94,6 +94,15 @@ impl CircleColliderCpt {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ParticleColliderCpt {}
+
+impl ParticleColliderCpt {
+    pub fn new() -> Self {
+        Self {}
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ColorBodyCpt {
     pub primary: Color,
     pub secondary: Color,
@@ -103,6 +112,60 @@ impl ColorBodyCpt {
         Self {
             primary: WHITE,
             secondary: BLUE,
+        }
+    }
+    pub fn red() -> Self {
+        Self {
+            primary: RED,
+            secondary: WHITE,
+        }
+    }
+    pub fn white() -> Self {
+        Self {
+            primary: WHITE,
+            secondary: RED,
+        }
+    }
+    pub fn green() -> Self {
+        Self {
+            primary: GREEN,
+            secondary: WHITE,
+        }
+    }
+    pub fn blue() -> Self {
+        Self {
+            primary: BLUE,
+            secondary: WHITE,
+        }
+    }
+    pub fn orange() -> Self {
+        Self {
+            primary: ORANGE,
+            secondary: WHITE,
+        }
+    }
+    pub fn yellow() -> Self {
+        Self {
+            primary: YELLOW,
+            secondary: WHITE,
+        }
+    }
+    pub fn magenta() -> Self {
+        Self {
+            primary: MAGENTA,
+            secondary: WHITE,
+        }
+    }
+    pub fn cyan() -> Self {
+        Self {
+            primary: CYAN,
+            secondary: WHITE,
+        }
+    }
+    pub fn grey() -> Self {
+        Self {
+            primary: GREY,
+            secondary: WHITE,
         }
     }
 }

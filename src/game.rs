@@ -4,14 +4,14 @@ use log::info;
 use rand::prelude::*;
 #[allow(warnings)]
 use std::collections::HashMap;
-use std::time::{Duration, Instant};
+use std::time::{self, Duration, Instant};
 
 use winit::event::{Event, VirtualKeyCode};
 use winit::event_loop::EventLoop;
 use winit::window::Window;
 use winit_input_helper::WinitInputHelper;
 
-use crate::draw::{draw_circle, draw_rect};
+use crate::draw::{draw_circle, draw_pixel, draw_rect};
 use crate::geom::*;
 use crate::gui::Framework;
 use crate::pixel::*;
@@ -152,6 +152,23 @@ impl Game {
                 secondary: Color::RGB(0, 0, 0),
             },
         ));
+        // self.world.spawn((
+        //     TransformCpt {
+        //         position: Vec2::new(LOGICAL_WINDOW_WIDTH - 100., 300.),
+        //         heading: 0.,
+        //         scale: Vec2::new(1.0, 1.0),
+        //     },
+        //     RigidBodyCpt {
+        //         velocity: Vec2::new(0., -100.),
+        //     },
+        //     CircleColliderCpt { r: 30.0 },
+        //     ColorBodyCpt {
+        //         primary: Color::RGB(255, 0, 0),
+        //         secondary: Color::RGB(0, 0, 0),
+        //     },
+        // ));
+
+        // collide it
         self.world.spawn((
             TransformCpt {
                 position: Vec2::new(LOGICAL_WINDOW_WIDTH - 100., 300.),
@@ -161,9 +178,38 @@ impl Game {
             RigidBodyCpt {
                 velocity: Vec2::new(0., -100.),
             },
-            CircleColliderCpt { r: 30.0 },
+            ProjectileCpt {
+                is_friendly: false,
+                hit_damage: 0,
+                duration: time::Duration::new(5, 0),
+                start_time: time::Instant::now(),
+            },
+            ParticleColliderCpt {},
             ColorBodyCpt {
                 primary: Color::RGB(255, 0, 0),
+                secondary: Color::RGB(0, 0, 0),
+            },
+        ));
+
+        // persist it
+        self.world.spawn((
+            TransformCpt {
+                position: Vec2::new(LOGICAL_WINDOW_WIDTH - 300., 300.),
+                heading: 0.,
+                scale: Vec2::new(1.0, 1.0),
+            },
+            RigidBodyCpt {
+                velocity: Vec2::new(0., 100.),
+            },
+            ProjectileCpt {
+                is_friendly: false,
+                hit_damage: 0,
+                duration: time::Duration::new(10, 0),
+                start_time: time::Instant::now(),
+            },
+            ParticleColliderCpt {},
+            ColorBodyCpt {
+                primary: Color::RGB(0, 255, 255),
                 secondary: Color::RGB(0, 0, 0),
             },
         ));
@@ -198,7 +244,9 @@ impl Game {
         system_integrate_rotation(&mut self.world, &dt);
         system_integrate_translation(&mut self.world, &dt);
         system_boundary_restrict_circle(&mut self.world);
+        system_boundary_restrict_particle(&mut self.world);
         system_circle_collision(&mut self.world);
+        system_particle_collision(&mut self.world);
     }
 
     pub fn render(&mut self, pixels: &mut Pixels, dbg_ctx: &DebugContext) {
@@ -219,16 +267,25 @@ impl Game {
         {
             draw_circloid(transform, collision_circle, colorbody, frame);
         }
+        for (_id, (transform, colorbody)) in self
+            .world
+            .query_mut::<With<(&TransformCpt, &ColorBodyCpt), &ParticleColliderCpt>>()
+        {
+            draw_pixel(
+                transform.position.x as i32,
+                transform.position.y as i32,
+                colorbody.primary,
+                frame,
+            );
+        }
 
         if dbg_ctx.is_drawing_collisionareas {
-            // let mut query = <(&TransformCpt, &BoxColliderCpt)>::query();
-            // for (transform, collision_area) in query.iter(&self.world) {
-            //     draw_collision_box(transform, collision_area, frame);
-            // }
-            // let mut query = <(&TransformCpt, &CircleColliderCpt)>::query();
-            // for (transform, collision_circle) in query.iter(&self.world) {
-            //     draw_collision_circle(transform, collision_circle, frame);
-            // }
+            for (_id, (transform, collision_circle)) in self
+                .world
+                .query_mut::<(&TransformCpt, &CircleColliderCpt)>()
+            {
+                draw_collision_circle(transform, collision_circle, frame);
+            }
         }
     }
 

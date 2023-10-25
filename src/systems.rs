@@ -155,6 +155,57 @@ pub fn system_circle_collision(world: &mut World) {
         world.despawn(entity);
     }
 }
+
+pub fn system_boundary_restrict_particle(world: &mut World) {
+    for (id, (transform, rigidbody)) in
+        world.query_mut::<With<(&mut TransformCpt, &mut RigidBodyCpt), &ParticleColliderCpt>>()
+    {
+        if transform.position.x >= LOGICAL_WINDOW_WIDTH || transform.position.x < 0f32 {
+            rigidbody.velocity.x = -rigidbody.velocity.x;
+        }
+        if transform.position.x < 0f32 {
+            transform.position.x = 0f32;
+        } else if transform.position.x >= LOGICAL_WINDOW_WIDTH {
+            transform.position.x = LOGICAL_WINDOW_WIDTH - 1.;
+        }
+
+        if transform.position.y >= LOGICAL_WINDOW_HEIGHT || transform.position.y < 0f32 {
+            rigidbody.velocity.y = -rigidbody.velocity.y;
+        }
+        if transform.position.y < 0f32 {
+            transform.position.y = 0f32;
+        } else if transform.position.y >= LOGICAL_WINDOW_HEIGHT {
+            transform.position.y = LOGICAL_WINDOW_HEIGHT - 1.;
+        }
+    }
+}
+
+// particles do not collide with each other
+pub fn system_particle_collision(world: &mut World) {
+    let mut entities: Vec<(Entity, TransformCpt, CircleColliderCpt)> = vec![];
+    // todo improve collecting entity and components, use chain method and
+    // collector https://docs.rs/hecs/latest/hecs/struct.QueryBorrow.html
+    for (entity, (transform, rigidbody)) in world.query_mut::<(&TransformCpt, &CircleColliderCpt)>()
+    {
+        entities.push((entity, *transform, *rigidbody));
+    }
+    let mut colliding_entities: Vec<&Entity> = vec![];
+    for (i, (entity1, tx1, cx1)) in entities.iter().enumerate() {
+        for (entity2, tx2, cx2) in entities[i + 1..].iter() {
+            let dx = tx2.position.x - tx1.position.x;
+            let dy = tx2.position.y - tx1.position.y;
+            let dr = (dx.powf(2.0) + dy.powf(2.0)).sqrt();
+            if dr < (cx1.r + cx2.r) {
+                dev!("COLLISION DETECTED");
+                colliding_entities.push(entity1);
+                colliding_entities.push(entity2);
+            }
+        }
+    }
+    for &entity in colliding_entities {
+        world.despawn(entity);
+    }
+}
 // #[system]
 // pub fn circle_collision(
 //     query: &mut Query<(Entity, &TransformCpt, &CircleColliderCpt)>,
