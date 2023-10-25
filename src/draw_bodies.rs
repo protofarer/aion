@@ -221,15 +221,15 @@ pub fn draw_boundary(frame: &mut [u8]) {
 
 pub fn draw_circloid(
     transform: &TransformCpt,
-    collision_area: &BoxColliderCpt,
+    collision_area: &CircleColliderCpt,
     colorbody: &ColorBodyCpt,
     frame: &mut [u8],
 ) {
-    let r = collision_area.w / 2.0;
+    let r = collision_area.r;
     draw_circle(
         frame,
-        (transform.position.x + r) as i32,
-        (transform.position.y + r) as i32,
+        (transform.position.x) as i32,
+        (transform.position.y) as i32,
         r as i32,
         colorbody.primary,
     );

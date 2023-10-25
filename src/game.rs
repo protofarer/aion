@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use hecs::{PreparedQuery, World};
+use hecs::{PreparedQuery, With, Without, World};
 use log::info;
 use rand::prelude::*;
 #[allow(warnings)]
@@ -136,6 +136,38 @@ impl Game {
         // spawn_buncha_circles(&mut self.world);
         // spawn_buncha_squares(&mut self.world);
 
+        // spawn incoming circloids
+        self.world.spawn((
+            TransformCpt {
+                position: Vec2::new(LOGICAL_WINDOW_WIDTH - 100., 100.),
+                heading: 0.,
+                scale: Vec2::new(1.0, 1.0),
+            },
+            RigidBodyCpt {
+                velocity: Vec2::new(0., 100.),
+            },
+            CircleColliderCpt { r: 30.0 },
+            ColorBodyCpt {
+                primary: Color::RGB(160, 160, 0),
+                secondary: Color::RGB(0, 0, 0),
+            },
+        ));
+        self.world.spawn((
+            TransformCpt {
+                position: Vec2::new(LOGICAL_WINDOW_WIDTH - 100., 300.),
+                heading: 0.,
+                scale: Vec2::new(1.0, 1.0),
+            },
+            RigidBodyCpt {
+                velocity: Vec2::new(0., -100.),
+            },
+            CircleColliderCpt { r: 30.0 },
+            ColorBodyCpt {
+                primary: Color::RGB(255, 0, 0),
+                secondary: Color::RGB(0, 0, 0),
+            },
+        ));
+
         self.loop_controller.run();
         dev!("SETUP fin");
     }
@@ -166,6 +198,7 @@ impl Game {
         system_integrate_rotation(&mut self.world, &dt);
         system_integrate_translation(&mut self.world, &dt);
         system_boundary_restrict_circle(&mut self.world);
+        system_circle_collision(&mut self.world);
     }
 
     pub fn render(&mut self, pixels: &mut Pixels, dbg_ctx: &DebugContext) {
@@ -174,11 +207,17 @@ impl Game {
         clear(frame);
         draw_boundary(frame);
 
-        for (_id, (transform, collision_circle, colorbody)) in
-            self.world
-                .query_mut::<(&TransformCpt, &CircleColliderCpt, &ColorBodyCpt)>()
+        for (_id, (transform, collision_circle, colorbody)) in self
+            .world
+            .query_mut::<With<(&TransformCpt, &CircleColliderCpt, &ColorBodyCpt), &HumanInputCpt>>()
         {
             draw_ship_circle_collision(transform, collision_circle, colorbody, frame);
+        }
+        for (_id, (transform, collision_circle, colorbody)) in self
+            .world
+            .query_mut::<Without<(&TransformCpt, &CircleColliderCpt, &ColorBodyCpt), &HumanInputCpt>>()
+        {
+            draw_circloid(transform, collision_circle, colorbody, frame);
         }
 
         if dbg_ctx.is_drawing_collisionareas {
@@ -353,4 +392,8 @@ fn spawn_buncha_boxoids(world: &mut World) {
 
 fn spawn_buncha_circloids(world: &mut World) {
     // let _: &[Entity] = world.extend(gen_circloids(5));
+}
+
+pub fn deg_to_rad(x: f32) -> f32 {
+    x * nalgebra_glm::pi::<f32>() / 180.0
 }
