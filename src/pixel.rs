@@ -1,3 +1,5 @@
+use rand::Rng;
+
 #[derive(Clone, Copy, Eq, PartialEq, Hash, Debug)]
 pub struct Color([u8; 4]);
 
@@ -26,6 +28,22 @@ impl Color {
             255 - self.0[2],
             255 - self.0[3],
         ])
+    }
+    pub fn rng() -> Color {
+        let mut rng = rand::thread_rng();
+        let z = rng.gen::<f32>();
+        let color_idx = (z * 8.0).floor() as i32; // number of prebuilt color constants
+        match color_idx {
+            0 => WHITE,
+            1 => RED,
+            2 => ORANGE,
+            3 => YELLOW,
+            4 => GREEN,
+            5 => BLUE,
+            6 => CYAN,
+            7 => GRAY,
+            _ => GRAY,
+        }
     }
 }
 impl Default for Color {

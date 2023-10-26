@@ -3,7 +3,7 @@ use std::time::{self, Duration};
 use crate::game::{RunState, WindowDims};
 use crate::time::Dt;
 use crate::{components::*, dev, LOGICAL_WINDOW_HEIGHT, LOGICAL_WINDOW_WIDTH};
-use hecs::{Entity, Query, QueryBorrow, With, World};
+use hecs::{Entity, Query, QueryBorrow, With, Without, World};
 use nalgebra_glm::Vec2;
 use winit::event::VirtualKeyCode;
 use winit_input_helper::WinitInputHelper;
@@ -60,6 +60,26 @@ pub fn system_process_ship_controls(
         }
     }
 }
+
+// fn process_player_control_keys(&mut self) {
+// let mut query = <(&HumanInputCpt, &mut RotationalInputCpt)>::query();
+
+// let input = &self.input;
+// let runstate = self.get_runstate();
+
+// for (_human, mut rotational_input) in query.iter_mut(&mut self.world) {
+//     set_rotational_input(input, runstate, &mut rotational_input);
+// }
+
+// if self.input.key_pressed(VirtualKeyCode::Space)
+//     || self.input.key_held(VirtualKeyCode::Space)
+// {
+//     let mut query = <&mut CraftActionStateCpt>::query();
+//     for state in query.iter_mut(&mut self.world) {
+//         state.is_firing_primary = true;
+//     }
+// }
+// }
 
 // todo Ideally: key input event -> key<->control mapping -> control event or set control component
 fn set_rotational_input(
@@ -159,9 +179,36 @@ pub fn system_circle_collision(world: &mut World) {
     }
 }
 
-pub fn system_boundary_restrict_particle(world: &mut World) {
+pub fn system_boundary_restrict_projectile(world: &mut World) {
     for (id, (transform, rigidbody)) in
         world.query_mut::<With<(&mut TransformCpt, &mut RigidBodyCpt), &ParticleColliderCpt>>()
+    {
+        if transform.position.x >= LOGICAL_WINDOW_WIDTH || transform.position.x < 0f32 {
+            rigidbody.velocity.x = -rigidbody.velocity.x;
+        }
+        if transform.position.x < 0f32 {
+            transform.position.x = 0f32;
+        } else if transform.position.x >= LOGICAL_WINDOW_WIDTH {
+            transform.position.x = LOGICAL_WINDOW_WIDTH - 1.;
+        }
+
+        if transform.position.y >= LOGICAL_WINDOW_HEIGHT || transform.position.y < 0f32 {
+            rigidbody.velocity.y = -rigidbody.velocity.y;
+        }
+        if transform.position.y < 0f32 {
+            transform.position.y = 0f32;
+        } else if transform.position.y >= LOGICAL_WINDOW_HEIGHT {
+            transform.position.y = LOGICAL_WINDOW_HEIGHT - 1.;
+        }
+    }
+}
+
+pub fn system_boundary_restrict_particle(world: &mut World) {
+    for (id, (transform, rigidbody)) in
+        world.query_mut::<Without<
+            (&mut TransformCpt, &mut RigidBodyCpt),
+            (&ParticleColliderCpt, &CircleColliderCpt),
+        >>()
     {
         if transform.position.x >= LOGICAL_WINDOW_WIDTH || transform.position.x < 0f32 {
             rigidbody.velocity.x = -rigidbody.velocity.x;

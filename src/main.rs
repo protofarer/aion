@@ -1,5 +1,6 @@
 #![allow(unused)]
-mod avatar;
+mod archetypes;
+mod avatars;
 mod components;
 mod draw;
 mod draw_bodies;

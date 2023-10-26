@@ -10,8 +10,9 @@ use winit::event_loop::EventLoopWindowTarget;
 use winit::window::Window;
 
 use crate::{
+    archetypes::gen_circloids,
     dev,
-    game::{gen_boxoids, gen_circloids, Game, GetRunState, RunState},
+    game::{Game, GetRunState, RunState},
     DebugContext, LOGICAL_WINDOW_HEIGHT, LOGICAL_WINDOW_WIDTH, PHYSICAL_WINDOW_HEIGHT,
     PHYSICAL_WINDOW_WIDTH,
 };
@@ -235,17 +236,6 @@ impl Gui {
                     );
 
                     ui.horizontal(|ui| {
-                        if ui.button("spawn squares").clicked() {
-                            gs.game
-                                .world
-                                .extend(gen_boxoids(self.n_spawn_boxoids as i32));
-                        }
-                        ui.add(
-                            egui::Slider::new(&mut self.n_spawn_boxoids, 1.0..=10.0).step_by(1.0),
-                        );
-                    });
-
-                    ui.horizontal(|ui| {
                         if ui.button("spawn circloids").clicked() {
                             gs.game
                                 .world
@@ -255,6 +245,8 @@ impl Gui {
                             egui::Slider::new(&mut self.n_spawn_circloids, 1.0..=10.0).step_by(1.0),
                         );
                     });
+                    // todo spawn particles
+                    // todo spawn projectiles
 
                     if ui.button("step update").clicked() {
                         dev!("step update");

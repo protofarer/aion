@@ -11,7 +11,8 @@ use winit::event_loop::EventLoop;
 use winit::window::Window;
 use winit_input_helper::WinitInputHelper;
 
-use crate::avatar::{Circloid, HumanShip};
+use crate::archetypes::gen_buncha_rng_particles;
+use crate::avatars::{Circloid, HumanShip};
 use crate::draw::{draw_circle, draw_pixel, draw_rect};
 use crate::geom::*;
 use crate::gui::Framework;
@@ -106,85 +107,6 @@ impl Game {
         })
     }
 
-    pub fn setup(&mut self) {
-        dev!("SETUP start");
-
-        // PLAYER ENTITY
-        // todo use tag
-        let _ = self.world.spawn(HumanShip::new());
-
-        // spawn_buncha_particles(&mut self.world);
-        // spawn_buncha_circles(&mut self.world);
-        // spawn_buncha_squares(&mut self.world);
-
-        // spawn incoming circloids
-        // self.world.spawn(Circloid::new());
-        // self.world.spawn((
-        //     TransformCpt {
-        //         position: Vec2::new(LOGICAL_WINDOW_WIDTH - 100., 300.),
-        //         heading: 0.,
-        //         scale: Vec2::new(1.0, 1.0),
-        //     },
-        //     RigidBodyCpt {
-        //         velocity: Vec2::new(0., -100.),
-        //     },
-        //     CircleColliderCpt { r: 30.0 },
-        //     ColorBodyCpt {
-        //         primary: Color::RGB(255, 0, 0),
-        //         secondary: Color::RGB(0, 0, 0),
-        //     },
-        // ));
-
-        // collide it
-        self.world.spawn((
-            TransformCpt {
-                position: Vec2::new(LOGICAL_WINDOW_WIDTH - 100., 300.),
-                heading: 0.,
-                scale: Vec2::new(1.0, 1.0),
-            },
-            RigidBodyCpt {
-                velocity: Vec2::new(0., -100.),
-            },
-            ProjectileCpt {
-                is_friendly: false,
-                hit_damage: 0,
-                duration: time::Duration::new(5, 0),
-                start_time: Some(time::Instant::now()),
-            },
-            ParticleColliderCpt {},
-            ColorBodyCpt {
-                primary: Color::RGB(255, 0, 0),
-                secondary: Color::RGB(0, 0, 0),
-            },
-        ));
-
-        // persist it
-        self.world.spawn((
-            TransformCpt {
-                position: Vec2::new(LOGICAL_WINDOW_WIDTH - 300., 400.),
-                heading: 0.,
-                scale: Vec2::new(1.0, 1.0),
-            },
-            RigidBodyCpt {
-                velocity: Vec2::new(0., 100.),
-            },
-            ProjectileCpt {
-                is_friendly: false,
-                hit_damage: 0,
-                duration: time::Duration::new(10, 0),
-                start_time: Some(time::Instant::now()),
-            },
-            ParticleColliderCpt {},
-            ColorBodyCpt {
-                primary: Color::RGB(0, 255, 255),
-                secondary: Color::RGB(0, 0, 0),
-            },
-        ));
-
-        self.loop_controller.run();
-        dev!("SETUP fin");
-    }
-
     pub fn process_input(&mut self, dbg_context: &mut DebugContext) {
         self.process_dbg_keys(dbg_context);
 
@@ -194,23 +116,24 @@ impl Game {
         // self.process_player_control_keys();
     }
 
+    pub fn setup(&mut self) {
+        dev!("SETUP start");
+
+        let _ = self.world.spawn(HumanShip::new());
+
+        self.world.spawn_batch(gen_buncha_rng_particles(100));
+
+        self.loop_controller.run();
+        dev!("SETUP fin");
+    }
+
     pub fn update(&mut self, dt: Dt) {
-        // let update_schedule = Schedule::builder()
-        //     .add_system(process_rotational_input_system())
-        //     .add_system(process_translational_input_system())
-        //     .flush()
-        //     .add_system(update_positions_system())
-        //     .flush()
-        //     .add_system(circle_collision_system())
-        //     .flush()
-        //     .add_system(world_boundary_bounce_rect_system())
-        //     .add_system(world_boundary_bounce_circle_system())
-        //     .build();
         let runstate = self.get_runstate();
         system_process_ship_controls(&mut self.world, runstate, &self.input);
         system_integrate_rotation(&mut self.world, &dt);
         system_integrate_translation(&mut self.world, &dt);
         system_boundary_restrict_circle(&mut self.world);
+        system_boundary_restrict_projectile(&mut self.world);
         system_boundary_restrict_particle(&mut self.world);
         system_circle_collision(&mut self.world);
         system_particle_collision(&mut self.world);
@@ -222,42 +145,10 @@ impl Game {
         clear(frame);
         draw_boundary(frame);
 
-        // for (_id, (transform, collision_circle, colorbody)) in self
-        //     .world
-        //     .query_mut::<With<(&TransformCpt, &CircleColliderCpt, &ColorBodyCpt), &HumanInputCpt>>()
-        // {
-        //     draw_ship_circle_collision(transform, collision_circle, colorbody, frame);
-        // }
-
-        for (_id, (transform, collision_circle, drawbody)) in self
-            .world
-            .query_mut::<With<(&TransformCpt, &CircleColliderCpt, &DrawBodyCpt), &HumanInputCpt>>()
+        // draw avatars
+        for (_id, (transform, drawbody)) in self.world.query_mut::<(&TransformCpt, &DrawBodyCpt)>()
         {
-            match drawbody {
-                DrawBodyCpt { data, colorbody } => match data {
-                    DrawData::Lines(x) => {
-                        draw_body_line(transform, x.to_vec(), colorbody, frame);
-                    }
-                    DrawData::R(r) => {
-                        draw_body_circle(transform, *r, colorbody, frame);
-                    }
-                    _ => {}
-                },
-                _ => {}
-            }
-            // draw_body_line(transform, drawbody., colorbody, frame)
-        }
-
-        for (_id, (transform, colorbody)) in self
-            .world
-            .query_mut::<With<(&TransformCpt, &ColorBodyCpt), &ParticleColliderCpt>>()
-        {
-            draw_pixel(
-                transform.position.x as i32,
-                transform.position.y as i32,
-                colorbody.primary,
-                frame,
-            );
+            draw_avatar(transform, drawbody, frame);
         }
 
         if dbg_ctx.is_drawing_collisionareas {
@@ -272,26 +163,6 @@ impl Game {
 
     pub fn destroy(&self) {
         dev!("DESTROY game");
-    }
-
-    fn process_player_control_keys(&mut self) {
-        // let mut query = <(&HumanInputCpt, &mut RotationalInputCpt)>::query();
-
-        // let input = &self.input;
-        // let runstate = self.get_runstate();
-
-        // for (_human, mut rotational_input) in query.iter_mut(&mut self.world) {
-        //     set_rotational_input(input, runstate, &mut rotational_input);
-        // }
-
-        // if self.input.key_pressed(VirtualKeyCode::Space)
-        //     || self.input.key_held(VirtualKeyCode::Space)
-        // {
-        //     let mut query = <&mut CraftActionStateCpt>::query();
-        //     for state in query.iter_mut(&mut self.world) {
-        //         state.is_firing_primary = true;
-        //     }
-        // }
     }
 
     fn process_dbg_keys(&mut self, dbg_ctx: &mut DebugContext) {
@@ -328,108 +199,6 @@ fn clear(frame: &mut [u8]) {
     for pixel in frame.chunks_exact_mut(4) {
         pixel.copy_from_slice(BLACK.as_bytes());
     }
-}
-
-fn gen_particle() -> (TransformCpt, RigidBodyCpt, BoxColliderCpt, ColorBodyCpt) {
-    let mut rng = rand::thread_rng();
-    (
-        TransformCpt {
-            position: Vec2::new(
-                rng.gen::<f32>() * LOGICAL_WINDOW_WIDTH,
-                rng.gen::<f32>() * LOGICAL_WINDOW_HEIGHT,
-            ),
-            heading: 0.0,
-            scale: Vec2::new(1.0, 1.0),
-        },
-        RigidBodyCpt {
-            velocity: Vec2::new(rng.gen::<f32>() * 1000.0, rng.gen::<f32>() * 1000.0),
-        },
-        BoxColliderCpt { w: 1.0, h: 1.0 },
-        ColorBodyCpt {
-            primary: GREY,
-            secondary: Color::RGB(0, 0, 0),
-        },
-    )
-}
-
-// there's a rusty way to populate a vector
-fn gen_particles(n: i32) -> Vec<(TransformCpt, RigidBodyCpt, BoxColliderCpt, ColorBodyCpt)> {
-    let mut particles = vec![];
-    for i in 0..n {
-        particles.push(gen_particle());
-    }
-    particles
-}
-
-pub fn gen_boxoid() -> (TransformCpt, RigidBodyCpt, BoxColliderCpt, ColorBodyCpt) {
-    let mut rng = rand::thread_rng();
-    (
-        TransformCpt {
-            position: Vec2::new(
-                rng.gen::<f32>() * LOGICAL_WINDOW_WIDTH,
-                rng.gen::<f32>() * LOGICAL_WINDOW_HEIGHT,
-            ),
-            heading: 0.0,
-            scale: Vec2::new(1.0, 1.0),
-        },
-        RigidBodyCpt {
-            velocity: Vec2::new(rng.gen::<f32>() * 500.0, rng.gen::<f32>() * 500.0),
-        },
-        BoxColliderCpt { w: 15.0, h: 15.0 },
-        ColorBodyCpt {
-            primary: RED,
-            secondary: Color::RGB(0, 0, 0),
-        },
-    )
-}
-pub fn gen_boxoids(n: i32) -> Vec<(TransformCpt, RigidBodyCpt, BoxColliderCpt, ColorBodyCpt)> {
-    let mut squares = vec![];
-    for i in 0..n {
-        squares.push(gen_boxoid());
-    }
-    squares
-}
-
-fn gen_circloid() -> (TransformCpt, RigidBodyCpt, CircleColliderCpt, ColorBodyCpt) {
-    let mut rng = rand::thread_rng();
-    (
-        TransformCpt {
-            position: Vec2::new(
-                rng.gen::<f32>() * LOGICAL_WINDOW_WIDTH,
-                rng.gen::<f32>() * LOGICAL_WINDOW_HEIGHT,
-            ),
-            heading: 0.0,
-            scale: Vec2::new(1.0, 1.0),
-        },
-        RigidBodyCpt {
-            velocity: Vec2::new(rng.gen::<f32>() * 100.0, rng.gen::<f32>() * 100.0),
-        },
-        CircleColliderCpt { r: 30.0 },
-        ColorBodyCpt {
-            primary: Color::RGB(160, 160, 0),
-            secondary: Color::RGB(0, 0, 0),
-        },
-    )
-}
-
-pub fn gen_circloids(n: i32) -> Vec<(TransformCpt, RigidBodyCpt, CircleColliderCpt, ColorBodyCpt)> {
-    let mut circles = vec![];
-    for i in 0..n {
-        circles.push(gen_circloid());
-    }
-    circles
-}
-
-fn spawn_buncha_particles(world: &mut World) {
-    // let _: &[Entity] = world.extend(gen_particles(1000));
-}
-
-fn spawn_buncha_boxoids(world: &mut World) {
-    // let _: &[Entity] = world.extend(gen_boxoids(12));
-}
-
-fn spawn_buncha_circloids(world: &mut World) {
-    // let _: &[Entity] = world.extend(gen_circloids(5));
 }
 
 pub fn deg_to_rad(x: f32) -> f32 {

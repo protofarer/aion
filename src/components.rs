@@ -265,6 +265,7 @@ pub enum Direction {
 pub enum DrawData {
     R(f32),
     Lines(Vec<(Vec2, Vec2)>),
+    Particle,
 }
 
 impl DrawData {
