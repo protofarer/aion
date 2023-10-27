@@ -14,10 +14,11 @@ use winit_input_helper::WinitInputHelper;
 use crate::archetypes::gen_buncha_rng_particles;
 use crate::avatars::{Circloid, HumanShip};
 use crate::draw::{draw_circle, draw_pixel, draw_rect};
-use crate::geom::*;
 use crate::gui::Framework;
 use crate::pixel::*;
+use crate::scenario::{gen_passing_particles, gen_row_particles};
 use crate::time::{Dt, FrameTimer};
+use crate::util::*;
 use crate::{dev, game, log_error, INIT_DT, LOGICAL_WINDOW_HEIGHT, LOGICAL_WINDOW_WIDTH}; // little function in main.rs
 use crate::{draw_bodies::*, DebugContext};
 use nalgebra_glm::Vec2;
@@ -121,7 +122,22 @@ impl Game {
 
         let _ = self.world.spawn(HumanShip::new());
 
-        self.world.spawn_batch(gen_buncha_rng_particles(100));
+        // todo generate a good explorative scenario
+        // - noncolliding every color particle, bounce vertical (color tweaks)
+        // - 1 pair pass-thru particles
+        // - noncolliding & colliding projectile, bounce vertical
+        // - noncolliding & colliding circloids, bounce vertical
+        // - noncolliding & colliding ships, bounce vertical
+
+        self.world.spawn_batch(
+            gen_buncha_rng_particles(1000)
+                .into_iter()
+                .map(|arch_particle| arch_particle.into_tuple()),
+        );
+        // self.world
+        //     .spawn_batch(gen_row_particles().into_iter().map(|p| p.into_tuple()));
+        // self.world
+        //     .spawn_batch(gen_passing_particles().into_iter().map(|p| p.into_tuple()));
 
         self.loop_controller.run();
         dev!("SETUP fin");
@@ -199,8 +215,4 @@ fn clear(frame: &mut [u8]) {
     for pixel in frame.chunks_exact_mut(4) {
         pixel.copy_from_slice(BLACK.as_bytes());
     }
-}
-
-pub fn deg_to_rad(x: f32) -> f32 {
-    x * nalgebra_glm::pi::<f32>() / 180.0
 }

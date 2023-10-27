@@ -5,13 +5,25 @@ mod components;
 mod draw;
 mod draw_bodies;
 mod game;
-mod geom;
 mod gui;
 mod init;
 mod logging;
 mod pixel;
+mod scenario;
 mod systems;
 mod time;
+mod util;
+
+extern crate procfs;
+/// Resident Set Size: number of pages the process has in real memory.
+///
+/// This is just the pages which count toward text,  data,  or stack space.
+/// This does not include pages which have not been demand-loaded in, or which are swapped out.
+fn get_process_memory() -> Option<u64> {
+    let me = procfs::process::Process::myself().ok()?;
+    let stat = me.stat().ok()?;
+    Some(stat.rss_bytes())
+}
 
 use std::{
     cell::RefCell,
@@ -129,6 +141,7 @@ fn main() {
 
     game.setup();
 
+    let mut memstat: Option<u64> = None;
     game_loop(
         event_loop,
         window,
@@ -158,6 +171,10 @@ fn main() {
                 let render_timer = &render_ctx.render_timer;
                 let update_timer2 = render_ctx.update_timer.borrow();
 
+                if render_timer.count_frames() % 60 == 0 {
+                    memstat = get_process_memory();
+                }
+
                 let gui_game_state = StateMonitor {
                     game: &mut g.game,
                     render_fps: render_timer.fps(),
@@ -165,6 +182,7 @@ fn main() {
                     render_frame_count: render_timer.count_frames(),
                     update_frame_count: update_timer2.count_frames(),
                     dbg_ctx: &mut dbg_ctx_gui.borrow_mut(),
+                    memstat,
                 };
 
                 framework.prepare(&g.window, gui_game_state); // Prepare egui

@@ -199,6 +199,12 @@ impl Gui {
                 });
                 ui.horizontal(|ui| {
                     ui.label(format!(
+                        "mem_rss: {} MB",
+                        ((gs.memstat.unwrap_or(0u64) as f64 / 1_000_000.) * 10.).floor() / 10.0
+                    ));
+                });
+                ui.horizontal(|ui| {
+                    ui.label(format!(
                         "win dims: {}x{} ",
                         PHYSICAL_WINDOW_WIDTH, PHYSICAL_WINDOW_HEIGHT
                     ));
@@ -279,4 +285,5 @@ pub struct StateMonitor<'a> {
     pub render_frame_count: usize,
     pub update_frame_count: usize,
     pub dbg_ctx: &'a mut DebugContext,
+    pub memstat: Option<u64>,
 }

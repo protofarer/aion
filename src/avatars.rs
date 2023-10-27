@@ -1,4 +1,4 @@
-// Discrete game avatars aka prefigured bags of components for game actors
+// Discrete game avatars aka prefigured bags of components for game-specific characters/agents/actors
 
 use std::time;
 

@@ -262,6 +262,7 @@ pub enum Direction {
     NW,
 }
 
+#[derive(Clone, Debug, PartialEq)]
 pub enum DrawData {
     R(f32),
     Lines(Vec<(Vec2, Vec2)>),
@@ -285,6 +286,8 @@ impl DrawData {
     }
 }
 
+// cant use copy because DrawData has a Vec type, must clone where needed
+#[derive(Clone, Debug, PartialEq)]
 pub struct DrawBodyCpt {
     pub data: DrawData,
     pub colorbody: ColorBodyCpt,

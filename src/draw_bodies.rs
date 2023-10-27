@@ -1,5 +1,5 @@
 use crate::{
-    components::*, dev, draw::*, geom::rotate_point, pixel::*, LOGICAL_WINDOW_HEIGHT,
+    components::*, dev, draw::*, pixel::*, util::rotate_point, LOGICAL_WINDOW_HEIGHT,
     LOGICAL_WINDOW_WIDTH,
 };
 use nalgebra_glm::Vec2;
@@ -136,76 +136,6 @@ pub fn generate_ship_lines() -> Vec<(Vec2, Vec2)> {
         v.push((p1, p2));
     }
     v
-}
-
-pub fn draw_ship_square(
-    transform: &TransformCpt,
-    bc: &BoxColliderCpt,
-    colorbody: &ColorBodyCpt,
-    frame: &mut [u8],
-) {
-    // r is canonical draw length, half a side of collision square
-    // or the length of radius for collision circle
-    let r = bc.w / 2.0;
-
-    let x = transform.position.x;
-    let y = transform.position.y;
-
-    let mut x1 = x;
-    let mut y1 = y;
-
-    // notch
-    let mut xm = x + r * 0.5;
-    let mut ym = y + r;
-
-    let mut x2 = x1;
-    let mut y2 = y + r * 2.0;
-
-    let mut x3 = x + r * 2.0;
-    let mut y3 = y + r;
-
-    let cx = x + r;
-    let cy = y + r;
-
-    (x1, y1) = rotate_point(x1, y1, transform.heading, cx, cy);
-    (xm, ym) = rotate_point(xm, ym, transform.heading, cx, cy);
-    (x2, y2) = rotate_point(x2, y2, transform.heading, cx, cy);
-    (x3, y3) = rotate_point(x3, y3, transform.heading, cx, cy);
-
-    // Draw the triangle
-    draw_line(
-        x1.round() as i32,
-        y1.round() as i32,
-        xm.round() as i32,
-        ym.round() as i32,
-        colorbody.primary,
-        frame,
-    );
-
-    draw_line(
-        xm.round() as i32,
-        ym.round() as i32,
-        x2.round() as i32,
-        y2.round() as i32,
-        colorbody.primary,
-        frame,
-    );
-    draw_line(
-        x2.round() as i32,
-        y2.round() as i32,
-        x3.round() as i32,
-        y3.round() as i32,
-        colorbody.primary,
-        frame,
-    );
-    draw_line(
-        x3.round() as i32,
-        y3.round() as i32,
-        x1.round() as i32,
-        y1.round() as i32,
-        colorbody.primary,
-        frame,
-    );
 }
 
 pub fn draw_body_of_particle(transform: &TransformCpt, colorbody: &ColorBodyCpt, frame: &mut [u8]) {

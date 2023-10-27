@@ -1,16 +1,21 @@
 use nalgebra_glm::Vec2;
 use rand::Rng;
 
+// avatar primitives
+// good for exploring design, testing, developing extensible system for defining avatars,
+// that is, exploring the "avatar design space"
 use crate::{components::*, pixel::*, LOGICAL_WINDOW_HEIGHT, LOGICAL_WINDOW_WIDTH};
 
-pub fn gen_particle(
-    x: f32,
-    y: f32,
-    vx: f32,
-    vy: f32,
-    color: Color,
-) -> (TransformCpt, RigidBodyCpt, DrawBodyCpt) {
-    (
+pub struct ArchParticle(TransformCpt, RigidBodyCpt, DrawBodyCpt);
+impl ArchParticle {
+    pub fn into_tuple(self) -> (TransformCpt, RigidBodyCpt, DrawBodyCpt) {
+        let ArchParticle(a, b, c) = self;
+        (a, b, c)
+    }
+}
+
+pub fn gen_particle(x: f32, y: f32, vx: f32, vy: f32, color: Color) -> ArchParticle {
+    ArchParticle(
         TransformCpt {
             position: Vec2::new(x, y),
             heading: 0.0,
@@ -29,11 +34,11 @@ pub fn gen_particle(
     )
 }
 
-pub fn gen_buncha_rng_particles(n: i32) -> Vec<(TransformCpt, RigidBodyCpt, DrawBodyCpt)> {
+pub fn gen_buncha_rng_particles(n: i32) -> Vec<ArchParticle> {
     (0..n).map(|_| gen_particle_rng_all()).collect()
 }
 
-pub fn gen_particle_rng_all() -> (TransformCpt, RigidBodyCpt, DrawBodyCpt) {
+pub fn gen_particle_rng_all() -> ArchParticle {
     let mut rng = rand::thread_rng();
     gen_particle(
         rng.gen::<f32>() * LOGICAL_WINDOW_WIDTH,
