@@ -121,6 +121,7 @@ impl Game {
         dev!("SETUP start");
 
         let _ = self.world.spawn(HumanShip::new());
+        self.world.spawn(Circloid::new());
 
         // todo generate a good explorative scenario
         // - noncolliding every color particle, bounce vertical (color tweaks)
@@ -129,13 +130,12 @@ impl Game {
         // - noncolliding & colliding circloids, bounce vertical
         // - noncolliding & colliding ships, bounce vertical
 
-        self.world.spawn_batch(
-            gen_buncha_rng_particles(1000)
-                .into_iter()
-                .map(|arch_particle| arch_particle.into_tuple()),
-        );
-        // self.world
-        //     .spawn_batch(gen_row_particles().into_iter().map(|p| p.into_tuple()));
+        // self.world.spawn_batch(
+        //     gen_buncha_rng_particles(1000)
+        //         .into_iter()
+        //         .map(|arch_particle| arch_particle.into_tuple()),
+        // );
+        self.world.spawn_batch(gen_row_particles());
         // self.world
         //     .spawn_batch(gen_passing_particles().into_iter().map(|p| p.into_tuple()));
 

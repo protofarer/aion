@@ -1,4 +1,6 @@
 // Discrete game avatars aka prefigured bags of components for game-specific characters/agents/actors
+// focused on specifying component data to support desired form and function
+// directly spawnable by hecs world spawn functions
 
 use std::time;
 
@@ -17,7 +19,8 @@ use crate::{
 pub struct Circloid;
 
 impl Circloid {
-    pub fn new() -> (TransformCpt, RigidBodyCpt, CircleColliderCpt, ColorBodyCpt) {
+    pub fn new() -> (TransformCpt, RigidBodyCpt, CircleColliderCpt, DrawBodyCpt) {
+        let r = 10.;
         (
             TransformCpt {
                 position: Vec2::new(LOGICAL_WINDOW_WIDTH / 2., LOGICAL_WINDOW_HEIGHT / 2.),
@@ -25,12 +28,15 @@ impl Circloid {
                 scale: Vec2::new(1.0, 1.0),
             },
             RigidBodyCpt {
-                velocity: Vec2::new(100., 100.),
+                velocity: Vec2::new(0., 0.),
             },
-            CircleColliderCpt { r: 30.0 },
-            ColorBodyCpt {
-                primary: YELLOW,
-                secondary: WHITE,
+            CircleColliderCpt { r },
+            DrawBodyCpt {
+                colorbody: ColorBodyCpt {
+                    primary: YELLOW,
+                    secondary: WHITE,
+                },
+                data: DrawData::R(r),
             },
         )
     }

@@ -10,7 +10,10 @@ use winit::event_loop::EventLoopWindowTarget;
 use winit::window::Window;
 
 use crate::{
-    archetypes::gen_circloids,
+    archetypes::{
+        gen_buncha_rng_circloids, gen_buncha_rng_particles, gen_buncha_rng_projectiles,
+        gen_circloids,
+    },
     dev,
     game::{Game, GetRunState, RunState},
     DebugContext, LOGICAL_WINDOW_HEIGHT, LOGICAL_WINDOW_WIDTH, PHYSICAL_WINDOW_HEIGHT,
@@ -44,8 +47,9 @@ pub struct Framework {
 struct Gui {
     /// Only show the egui window when true.
     window_open: bool,
-    n_spawn_boxoids: f32,
-    n_spawn_circloids: f32,
+    n_spawn_circloids: i32,
+    n_spawn_particles: i32,
+    n_spawn_projectiles: i32,
 }
 
 impl Framework {
@@ -170,8 +174,9 @@ impl Gui {
     fn new() -> Self {
         Self {
             window_open: true,
-            n_spawn_boxoids: 1.0,
-            n_spawn_circloids: 1.0,
+            n_spawn_particles: 1,
+            n_spawn_circloids: 1,
+            n_spawn_projectiles: 1,
         }
     }
 
@@ -242,17 +247,31 @@ impl Gui {
                     );
 
                     ui.horizontal(|ui| {
+                        if ui.button("spawn particles").clicked() {
+                            gs.game
+                                .world
+                                .extend(gen_buncha_rng_particles(self.n_spawn_particles));
+                        }
+                        ui.add(egui::Slider::new(&mut self.n_spawn_particles, 1..=10).step_by(1.));
+                    });
+                    ui.horizontal(|ui| {
                         if ui.button("spawn circloids").clicked() {
                             gs.game
                                 .world
-                                .extend(gen_circloids(self.n_spawn_circloids as i32));
+                                .extend(gen_buncha_rng_circloids(self.n_spawn_circloids));
+                        }
+                        ui.add(egui::Slider::new(&mut self.n_spawn_circloids, 1..=10).step_by(1.));
+                    });
+                    ui.horizontal(|ui| {
+                        if ui.button("spawn projectiles").clicked() {
+                            gs.game
+                                .world
+                                .extend(gen_buncha_rng_projectiles(self.n_spawn_projectiles));
                         }
                         ui.add(
-                            egui::Slider::new(&mut self.n_spawn_circloids, 1.0..=10.0).step_by(1.0),
+                            egui::Slider::new(&mut self.n_spawn_projectiles, 1..=10).step_by(1.),
                         );
                     });
-                    // todo spawn particles
-                    // todo spawn projectiles
 
                     if ui.button("step update").clicked() {
                         dev!("step update");
