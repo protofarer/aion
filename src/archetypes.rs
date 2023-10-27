@@ -31,7 +31,11 @@ pub fn gen_particle(x: f32, y: f32, vx: f32, vy: f32, color: Color) -> ArchParti
     )
 }
 
-pub fn gen_particle_rng_all() -> ArchParticle {
+pub fn gen_particles(n: i32, x: f32, y: f32, vx: f32, vy: f32, color: Color) -> Vec<ArchParticle> {
+    (0..n).map(|_| gen_particle(x, y, vx, vy, color)).collect()
+}
+
+pub fn gen_particle_rng() -> ArchParticle {
     let mut rng = rand::thread_rng();
     let mut rng_int = rng.gen::<i32>();
     let mut sign = (rng_int / rng_int.abs()) as f32;
@@ -45,7 +49,7 @@ pub fn gen_particle_rng_all() -> ArchParticle {
 }
 
 pub fn gen_buncha_rng_particles(n: i32) -> Vec<ArchParticle> {
-    (0..n).map(|_| gen_particle_rng_all()).collect()
+    (0..n).map(|_| gen_particle_rng()).collect()
 }
 
 pub type ArchCircloid = (TransformCpt, RigidBodyCpt, DrawBodyCpt, CircleColliderCpt);
@@ -71,6 +75,20 @@ pub fn gen_circloid(x: f32, y: f32, vx: f32, vy: f32, r: f32, color: Color) -> A
     )
 }
 
+pub fn gen_circloids(
+    n: i32,
+    x: f32,
+    y: f32,
+    vx: f32,
+    vy: f32,
+    r: f32,
+    color: Color,
+) -> Vec<ArchCircloid> {
+    (0..n)
+        .map(|_| gen_circloid(x, y, vx, vy, r, color))
+        .collect()
+}
+
 pub fn gen_circloid_rng() -> ArchCircloid {
     let mut rng = rand::thread_rng();
     let r = (rng.gen::<f32>() * 40.) + 10.;
@@ -90,15 +108,7 @@ pub fn gen_buncha_rng_circloids(n: i32) -> Vec<ArchCircloid> {
     (0..n).map(|_| gen_circloid_rng()).collect()
 }
 
-pub fn gen_circloids(n: i32) -> Vec<ArchCircloid> {
-    let mut circles = vec![];
-    for i in 0..n {
-        circles.push(gen_circloid_rng());
-    }
-    circles
-}
-
-type ArchProjectile = (TransformCpt, RigidBodyCpt, DrawBodyCpt, ParticleColliderCpt);
+pub type ArchProjectile = (TransformCpt, RigidBodyCpt, DrawBodyCpt, ParticleColliderCpt);
 
 pub fn gen_projectile(x: f32, y: f32, vx: f32, vy: f32, color: Color) -> ArchProjectile {
     (
@@ -119,6 +129,18 @@ pub fn gen_projectile(x: f32, y: f32, vx: f32, vy: f32, color: Color) -> ArchPro
         },
         ParticleColliderCpt {},
     )
+}
+pub fn gen_projectiles(
+    n: i32,
+    x: f32,
+    y: f32,
+    vx: f32,
+    vy: f32,
+    color: Color,
+) -> Vec<ArchProjectile> {
+    (0..n)
+        .map(|_| gen_projectile(x, y, vx, vy, color))
+        .collect()
 }
 
 pub fn gen_projectile_rng_all() -> ArchProjectile {

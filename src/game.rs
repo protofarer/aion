@@ -16,7 +16,7 @@ use crate::avatars::{Circloid, HumanShip};
 use crate::draw::{draw_circle, draw_pixel, draw_rect};
 use crate::gui::Framework;
 use crate::pixel::*;
-use crate::scenario::{gen_passing_particles, gen_row_particles};
+use crate::scenario::{gen_intersecting_particles, gen_row_particles, spawn_scenario1};
 use crate::time::{Dt, FrameTimer};
 use crate::util::*;
 use crate::{dev, game, log_error, INIT_DT, LOGICAL_WINDOW_HEIGHT, LOGICAL_WINDOW_WIDTH}; // little function in main.rs
@@ -121,7 +121,8 @@ impl Game {
         dev!("SETUP start");
 
         let _ = self.world.spawn(HumanShip::new());
-        self.world.spawn(Circloid::new());
+        // self.world.spawn(Circloid::new());
+        spawn_scenario1(&mut self.world);
 
         // todo generate a good explorative scenario
         // - noncolliding every color particle, bounce vertical (color tweaks)
@@ -135,7 +136,7 @@ impl Game {
         //         .into_iter()
         //         .map(|arch_particle| arch_particle.into_tuple()),
         // );
-        self.world.spawn_batch(gen_row_particles());
+        // self.world.spawn_batch(gen_row_particles());
         // self.world
         //     .spawn_batch(gen_passing_particles().into_iter().map(|p| p.into_tuple()));
 
