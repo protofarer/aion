@@ -203,6 +203,9 @@ fn main() {
                 }
             }
         },
+        ////////////////////////////////////////////////////////////////////
+        // INPUT
+        ////////////////////////////////////////////////////////////////////
         // move not in original tuzz code
         move |g, event| {
             let mut framework = input_ctx.framework.borrow_mut();

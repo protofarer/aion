@@ -146,7 +146,7 @@ impl Game {
 
     pub fn update(&mut self, dt: Dt) {
         let runstate = self.get_runstate();
-        system_process_ship_controls(&mut self.world, runstate, &self.input);
+        system_process_human_input(&mut self.world, runstate, &self.input);
         system_integrate_rotation(&mut self.world, &dt);
         system_integrate_translation(&mut self.world, &dt);
         system_boundary_restrict_circle(&mut self.world);

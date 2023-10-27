@@ -11,11 +11,7 @@ use winit_input_helper::WinitInputHelper;
 // todo ai input -> rotationalinputcpt
 // human input -> rotationalinputcpt
 
-pub fn system_process_ship_controls(
-    world: &mut World,
-    runstate: RunState,
-    input: &WinitInputHelper,
-) {
+pub fn system_process_human_input(world: &mut World, runstate: RunState, input: &WinitInputHelper) {
     for (_id, (rotational_input, move_attributes, transform, rigidbody, rotatablebody)) in world
         .query_mut::<With<
             (
@@ -28,37 +24,53 @@ pub fn system_process_ship_controls(
             &HumanInputCpt,
         >>()
     {
-        set_rotational_input(input, runstate, rotational_input);
+        set_rotational_input_component_by_human(input, runstate, rotational_input);
 
-        // read rotational input, change turn rate
-        match rotational_input.turn_sign {
-            Some(Turn::Right) => {
-                rotatablebody.rotation_rate = move_attributes.turn_rate;
-            }
-            Some(Turn::Left) => {
-                rotatablebody.rotation_rate = -move_attributes.turn_rate;
-            }
-            None => {
-                rotatablebody.rotation_rate = 0.;
-            }
+        // set rotation_rate sign
+        set_rotatablebody_component(rotational_input, rotatablebody, move_attributes);
+        set_rigidbody_component(transform, rotational_input, rigidbody, move_attributes);
+    }
+}
+fn set_rigidbody_component(
+    transform: &TransformCpt,
+    rotational_input: &RotationalInputCpt,
+    rigidbody: &mut RigidBodyCpt,
+    move_attributes: &MoveAttributesCpt,
+) {
+    // read thrust input and current heading, change rigidbody velocity
+    match rotational_input.is_thrusting {
+        true => {
+            rigidbody.velocity.x = (transform.heading).cos() * move_attributes.speed as f32;
+            rigidbody.velocity.y = (transform.heading).sin() * move_attributes.speed as f32;
         }
-
-        // todo update heading
-
-        // read thrust input and current heading, change rigidbody velocity
-        match rotational_input.is_thrusting {
-            true => {
-                rigidbody.velocity.x = (transform.heading).cos() * move_attributes.speed as f32;
-                rigidbody.velocity.y = (transform.heading).sin() * move_attributes.speed as f32;
-            }
-            false => {
-                // test when decel cross 0 in either direction
-                // todo don't hard set here, simply make no change, for maintaining momentum in prototype stage
-                // todo repeats when no key is pressed...
-                rigidbody.velocity = Vec2::default();
-            }
+        false => {
+            // test when decel cross 0 in either direction
+            // todo don't hard set here, simply make no change, for maintaining momentum in prototype stage
+            // todo repeats when no key is pressed...
+            rigidbody.velocity = Vec2::default();
         }
     }
+}
+
+fn set_rotatablebody_component(
+    rotational_input: &RotationalInputCpt,
+    rotatablebody: &mut RotatableBodyCpt,
+    move_attributes: &MoveAttributesCpt,
+) {
+    // read rotational input, change turn rate
+    match rotational_input.turn_sign {
+        Some(Turn::Right) => {
+            rotatablebody.rotation_rate = move_attributes.turn_rate;
+        }
+        Some(Turn::Left) => {
+            rotatablebody.rotation_rate = -move_attributes.turn_rate;
+        }
+        None => {
+            rotatablebody.rotation_rate = 0.;
+        }
+    }
+
+    // todo update heading
 }
 
 // fn process_player_control_keys(&mut self) {
@@ -82,7 +94,7 @@ pub fn system_process_ship_controls(
 // }
 
 // todo Ideally: key input event -> key<->control mapping -> control event or set control component
-fn set_rotational_input(
+fn set_rotational_input_component_by_human(
     input: &WinitInputHelper,
     runstate: RunState,
     rotational_input: &mut RotationalInputCpt,
