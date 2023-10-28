@@ -198,9 +198,3 @@ impl Drop for Game {
         dev!("Game dropped");
     }
 }
-
-fn clear(frame: &mut [u8]) {
-    for pixel in frame.chunks_exact_mut(4) {
-        pixel.copy_from_slice(BLACK.as_bytes());
-    }
-}
