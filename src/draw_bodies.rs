@@ -13,17 +13,17 @@ use nalgebra_glm::Vec2;
 // functions) to integers (discrete and performant, primitive draw)
 
 // decides which body to draw
-pub fn draw_avatar(transform: &TransformCpt, drawbody: &DrawBodyCpt, frame: &mut [u8]) {
+pub fn draw_avatar(frame: &mut [u8], transform: &TransformCpt, drawbody: &DrawBodyCpt) {
     match drawbody {
         DrawBodyCpt { data, colorbody } => match data {
             DrawData::Lines(x) => {
-                draw_body_of_lines(transform, x.to_vec(), colorbody, frame);
+                draw_body_of_lines(frame, transform, x.to_vec(), colorbody);
             }
             DrawData::R(r) => {
-                draw_body_of_r(transform, *r, colorbody, frame);
+                draw_body_of_r(frame, transform, *r, colorbody);
             }
             DrawData::Particle => {
-                draw_body_of_particle(transform, colorbody, frame);
+                draw_body_of_particle(frame, transform, colorbody);
             }
             _ => {}
         },
@@ -66,39 +66,39 @@ fn transform_body_data(
 }
 
 pub fn draw_lines_by_list(
+    frame: &mut [u8],
     vec: Vec<((f32, f32), (f32, f32))>,
     colorbody: &ColorBodyCpt,
-    frame: &mut [u8],
 ) {
     for (vec1, vec2) in vec {
         draw_line(
+            frame,
             vec1.0.round() as i32,
             vec1.1.round() as i32,
             vec2.0.round() as i32,
             vec2.1.round() as i32,
             colorbody.primary,
-            frame,
         );
     }
 }
 
 // DrawBodtCpt's DrawData::Lines
 pub fn draw_body_of_lines(
+    frame: &mut [u8],
     transform: &TransformCpt,
     lines: Vec<(Vec2, Vec2)>,
     colorbody: &ColorBodyCpt,
-    frame: &mut [u8],
 ) {
     let transformed_line_endpoint_pairs = transform_body_data(transform, lines);
-    draw_lines_by_list(transformed_line_endpoint_pairs, colorbody, frame);
+    draw_lines_by_list(frame, transformed_line_endpoint_pairs, colorbody);
 }
 
 // DrawBodtCpt's DrawData::R
 pub fn draw_body_of_r(
+    frame: &mut [u8],
     transform: &TransformCpt,
     r: f32,
     colorbody: &ColorBodyCpt,
-    frame: &mut [u8],
 ) {
     draw_circle(
         frame,
@@ -110,10 +110,10 @@ pub fn draw_body_of_r(
 }
 
 pub fn draw_body_of_circle(
+    frame: &mut [u8],
     transform: &TransformCpt,
     r: f32,
     colorbody: &ColorBodyCpt,
-    frame: &mut [u8],
 ) {
 }
 
@@ -138,42 +138,42 @@ pub fn generate_ship_lines() -> Vec<(Vec2, Vec2)> {
     v
 }
 
-pub fn draw_body_of_particle(transform: &TransformCpt, colorbody: &ColorBodyCpt, frame: &mut [u8]) {
+pub fn draw_body_of_particle(frame: &mut [u8], transform: &TransformCpt, colorbody: &ColorBodyCpt) {
     let x = transform.position.x;
     let y = transform.position.y;
-    draw_pixel(x.round() as i32, y.round() as i32, colorbody.primary, frame);
+    draw_pixel(frame, x.round() as i32, y.round() as i32, colorbody.primary);
 }
 
 pub fn draw_boundary(frame: &mut [u8]) {
     let color = BLUE;
     let width = LOGICAL_WINDOW_WIDTH as i32 - 1;
     let height = LOGICAL_WINDOW_HEIGHT as i32 - 1;
-    draw_line(0, 0, width, 0, color, frame);
-    draw_line(width, 0, width, height, color, frame);
-    draw_line(width, height, 0, height, color, frame);
-    draw_line(0, height, 0, 0, color, frame);
+    draw_line(frame, 0, 0, width, 0, color);
+    draw_line(frame, width, 0, width, height, color);
+    draw_line(frame, width, height, 0, height, color);
+    draw_line(frame, 0, height, 0, 0, color);
 }
 
 pub fn draw_collision_rect(
+    frame: &mut [u8],
     transform: &TransformCpt,
     collision_area: &BoxColliderCpt,
-    frame: &mut [u8],
 ) {
     // ? cast or round then cast?
     draw_rect(
+        frame,
         transform.position.x as i32,
         transform.position.y as i32,
         collision_area.w as i32,
         collision_area.h as i32,
         MAGENTA,
-        frame,
     );
 }
 
 pub fn draw_collision_circle(
+    frame: &mut [u8],
     transform: &TransformCpt,
     collision_circle: &CircleColliderCpt,
-    frame: &mut [u8],
 ) {
     // ? cast or round then cast?
     draw_circle(
@@ -184,64 +184,3 @@ pub fn draw_collision_circle(
         MAGENTA,
     );
 }
-
-// pub fn draw_box(transform: &TransformCpt, colorbody: &ColorBodyCpt, frame: &mut [u8]) {
-//     let r = 15.;
-//     let x = transform.position.x;
-//     let y = transform.position.y;
-
-//     let mut x1 = x;
-//     let mut y1 = y;
-
-//     let mut x2 = x1 + r;
-//     let mut y2 = y1;
-
-//     let mut x3 = x2;
-//     let mut y3 = y2 + r;
-
-//     let mut x4 = x1;
-//     let mut y4 = y3;
-
-//     let cx = x1 + (r / 2.0);
-//     let cy = y1 + (r / 2.0);
-
-//     (x1, y1) = rotate_point(x1, y1, transform.heading, cx, cy);
-//     (x2, y2) = rotate_point(x2, y2, transform.heading, cx, cy);
-//     (x3, y3) = rotate_point(x3, y3, transform.heading, cx, cy);
-//     (x4, y4) = rotate_point(x4, y4, transform.heading, cx, cy);
-
-//     // Draw the triangle
-//     draw_line(
-//         x1.round() as i32,
-//         y1.round() as i32,
-//         x2.round() as i32,
-//         y2.round() as i32,
-//         colorbody.primary,
-//         frame,
-//     );
-
-//     draw_line(
-//         x2.round() as i32,
-//         y2.round() as i32,
-//         x3.round() as i32,
-//         y3.round() as i32,
-//         colorbody.primary,
-//         frame,
-//     );
-//     draw_line(
-//         x3.round() as i32,
-//         y3.round() as i32,
-//         x4.round() as i32,
-//         y4.round() as i32,
-//         colorbody.primary,
-//         frame,
-//     );
-//     draw_line(
-//         x4.round() as i32,
-//         y4.round() as i32,
-//         x1.round() as i32,
-//         y1.round() as i32,
-//         colorbody.primary,
-//         frame,
-//     );
-// }

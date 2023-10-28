@@ -152,7 +152,7 @@ impl Game {
         // draw avatars
         for (_id, (transform, drawbody)) in self.world.query_mut::<(&TransformCpt, &DrawBodyCpt)>()
         {
-            draw_avatar(transform, drawbody, frame);
+            draw_avatar(frame, transform, drawbody);
         }
 
         if dbg_ctx.is_drawing_collisionareas {
@@ -160,7 +160,7 @@ impl Game {
                 .world
                 .query_mut::<(&TransformCpt, &CircleColliderCpt)>()
             {
-                draw_collision_circle(transform, collision_circle, frame);
+                draw_collision_circle(frame, transform, collision_circle);
             }
         }
     }

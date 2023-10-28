@@ -2,7 +2,7 @@ use crate::{components::ColorBodyCpt, pixel::Color};
 
 use super::{LOGICAL_WINDOW_HEIGHT, LOGICAL_WINDOW_WIDTH};
 
-pub fn draw_pixel(x: i32, y: i32, color: Color, frame: &mut [u8]) {
+pub fn draw_pixel(frame: &mut [u8], x: i32, y: i32, color: Color) {
     // this is the pixel guard
     if x >= 0 && x < (LOGICAL_WINDOW_WIDTH as i32) && y >= 0 && y < LOGICAL_WINDOW_HEIGHT as i32 {
         let i = ((LOGICAL_WINDOW_WIDTH as i32 * y + x) * 4) as usize;
@@ -12,7 +12,7 @@ pub fn draw_pixel(x: i32, y: i32, color: Color, frame: &mut [u8]) {
     }
 }
 
-pub fn draw_rect(x: i32, y: i32, width: i32, height: i32, color: Color, frame: &mut [u8]) {
+pub fn draw_rect(frame: &mut [u8], x: i32, y: i32, width: i32, height: i32, color: Color) {
     for i in y..=y + height {
         for j in x..=x + width {
             let n = ((LOGICAL_WINDOW_WIDTH as i32 * i + j) * 4) as usize;
@@ -28,7 +28,7 @@ pub fn draw_rect(x: i32, y: i32, width: i32, height: i32, color: Color, frame: &
     }
 }
 
-pub fn draw_line(x0: i32, y0: i32, x1: i32, y1: i32, color: Color, frame: &mut [u8]) {
+pub fn draw_line(frame: &mut [u8], x0: i32, y0: i32, x1: i32, y1: i32, color: Color) {
     let x_len = x1 - x0;
     let y_len = y1 - y0;
 
@@ -45,7 +45,7 @@ pub fn draw_line(x0: i32, y0: i32, x1: i32, y1: i32, color: Color, frame: &mut [
     let mut y = y0 as f32;
 
     for i in 0..=longer_side_len as i32 {
-        draw_pixel(x.round() as i32, y.round() as i32, color, frame);
+        draw_pixel(frame, x.round() as i32, y.round() as i32, color);
         x += dx;
         y += dy;
     }
@@ -58,19 +58,19 @@ pub fn draw_circle(frame: &mut [u8], x_center: i32, y_center: i32, radius: i32, 
 
     // When radius is zero, only a single point will be printed at center
     if radius == 0 {
-        draw_pixel(x_center, y_center, color, frame);
+        draw_pixel(frame, x_center, y_center, color);
         return;
     }
 
     if radius > 0 {
-        draw_pixel(x_center + radius, y_center, color, frame);
-        draw_pixel(x_center - radius, y_center, color, frame);
-        draw_pixel(x_center, y_center + radius, color, frame);
-        draw_pixel(x_center, y_center - radius, color, frame);
+        draw_pixel(frame, x_center + radius, y_center, color);
+        draw_pixel(frame, x_center - radius, y_center, color);
+        draw_pixel(frame, x_center, y_center + radius, color);
+        draw_pixel(frame, x_center, y_center - radius, color);
     }
 
     // Initial point on circle at the end of radius
-    draw_pixel(x_center + x, y_center - y, color, frame);
+    draw_pixel(frame, x_center + x, y_center - y, color);
 
     while x > y {
         y += 1;
@@ -88,16 +88,16 @@ pub fn draw_circle(frame: &mut [u8], x_center: i32, y_center: i32, radius: i32, 
         }
 
         // Symmetrical points in other octants
-        draw_pixel(x_center + x, y_center - y, color, frame);
-        draw_pixel(x_center - x, y_center - y, color, frame);
-        draw_pixel(x_center + x, y_center + y, color, frame);
-        draw_pixel(x_center - x, y_center + y, color, frame);
+        draw_pixel(frame, x_center + x, y_center - y, color);
+        draw_pixel(frame, x_center - x, y_center - y, color);
+        draw_pixel(frame, x_center + x, y_center + y, color);
+        draw_pixel(frame, x_center - x, y_center + y, color);
 
         if x != y {
-            draw_pixel(x_center + y, y_center - x, color, frame);
-            draw_pixel(x_center - y, y_center - x, color, frame);
-            draw_pixel(x_center + y, y_center + x, color, frame);
-            draw_pixel(x_center - y, y_center + x, color, frame);
+            draw_pixel(frame, x_center + y, y_center - x, color);
+            draw_pixel(frame, x_center - y, y_center - x, color);
+            draw_pixel(frame, x_center + y, y_center + x, color);
+            draw_pixel(frame, x_center - y, y_center + x, color);
         }
     }
 }
