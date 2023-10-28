@@ -53,15 +53,6 @@ use game::Game;
 use game::{GetRunState, RunState};
 use game_loop::game_loop;
 
-pub const TITLE: &'static str = "Aion";
-pub const LOGICAL_WINDOW_WIDTH: f32 = 960.;
-pub const LOGICAL_WINDOW_HEIGHT: f32 = 540.;
-pub const PHYSICAL_WINDOW_WIDTH: f32 = 1920.;
-pub const PHYSICAL_WINDOW_HEIGHT: f32 = 1080.;
-pub const INIT_DT: Duration = Duration::from_millis(16);
-const UPDATES_PER_SECOND: u32 = 60;
-const MAX_FRAME_TIME: f64 = 0.1;
-
 pub struct DebugContext {
     is_on: bool,
     is_drawing_collisionareas: bool,
@@ -82,6 +73,15 @@ struct InputContext {
     pixels: Rc<RefCell<Pixels>>,
     framework: Rc<RefCell<Framework>>,
 }
+
+pub const TITLE: &'static str = "Aion";
+pub const LOGICAL_WINDOW_WIDTH: f32 = 960.;
+pub const LOGICAL_WINDOW_HEIGHT: f32 = 540.;
+pub const PHYSICAL_WINDOW_WIDTH: f32 = 1920.;
+pub const PHYSICAL_WINDOW_HEIGHT: f32 = 1080.;
+pub const INIT_DT: Duration = Duration::from_millis(16);
+const UPDATES_PER_SECOND: u32 = 60;
+const MAX_FRAME_TIME: f64 = 0.1;
 
 fn main() {
     env::set_var("RUST_LOG", "DEV=debug");
