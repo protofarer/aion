@@ -104,10 +104,3 @@ impl Default for FrameTimer {
         Self::new()
     }
 }
-
-pub struct GameLoop {
-    update_count: u32,
-    render_count: u32,
-    running_time: f64,
-    accumulated_time: f64,
-}
