@@ -209,35 +209,37 @@ impl MindStateCpt {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Default)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ProjectileEmitterCpt {
-    pub projectile_velocity: nalgebra_glm::Vec2,
+    pub projectile_speed: f32,
     pub cooldown: i32,
     pub projectile_duration: time::Duration,
     pub hit_damage: i32,
     pub is_friendly: bool,
-    pub last_emission_time: Option<time::Instant>,
+    pub last_emission_time: time::Instant,
+    pub intends_to_fire: bool,
 }
 
 impl ProjectileEmitterCpt {
     pub fn new() -> Self {
         Self {
-            projectile_velocity: Vec2::new(300., 0.),
+            projectile_speed: 300.,
             cooldown: 250,
             projectile_duration: time::Duration::new(7, 0),
             hit_damage: 10,
             is_friendly: false,
-            last_emission_time: None,
+            last_emission_time: time::Instant::now(),
+            intends_to_fire: true,
         }
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Default)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ProjectileCpt {
     pub is_friendly: bool,
     pub hit_damage: i32,
     pub duration: time::Duration,
-    pub start_time: Option<time::Instant>,
+    pub start_time: time::Instant,
 }
 impl ProjectileCpt {
     pub fn new() -> Self {
@@ -245,7 +247,7 @@ impl ProjectileCpt {
             is_friendly: false,
             hit_damage: 0,
             duration: time::Duration::new(0, 3_000_000_000),
-            start_time: Some(time::Instant::now()),
+            start_time: time::Instant::now(),
         }
     }
 }

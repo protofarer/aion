@@ -6,6 +6,8 @@
 // todo gen pair of non-coll and coll ships (ensure heading flips accordingly)
 // todo put it all in a scenario
 
+use std::time;
+
 use hecs::World;
 
 use crate::{archetypes::*, pixel::*, LOGICAL_WINDOW_HEIGHT, LOGICAL_WINDOW_WIDTH};
@@ -45,8 +47,24 @@ pub fn gen_intersecting_particles() -> Vec<ArchParticle> {
 pub fn gen_intersecting_projectiles() -> Vec<ArchProjectile> {
     let x_start = LOGICAL_WINDOW_WIDTH / 2.0 + 100.;
     vec![
-        gen_projectile(x_start, 0f32, 0f32, -100., RED),
-        gen_projectile(x_start, LOGICAL_WINDOW_HEIGHT, 0f32, 100., GREEN),
+        gen_projectile(
+            x_start,
+            0f32,
+            0f32,
+            -100.,
+            time::Duration::new(100, 0),
+            10,
+            RED,
+        ),
+        gen_projectile(
+            x_start,
+            LOGICAL_WINDOW_HEIGHT,
+            0f32,
+            100.,
+            time::Duration::new(100, 0),
+            10,
+            GREEN,
+        ),
     ]
 }
 
@@ -61,7 +79,7 @@ pub fn gen_colliding_circloids() -> Vec<ArchCircloid> {
 pub fn gen_intersecting_circloid_projectile() -> (ArchProjectile, ArchCircloid) {
     let x_start = LOGICAL_WINDOW_WIDTH / 2.0 + 180.;
     (
-        gen_projectile(x_start, 0f32, 0., 100., RED),
+        gen_projectile(x_start, 0f32, 0., 100., time::Duration::new(5, 0), 10, RED),
         gen_circloid(
             x_start,
             LOGICAL_WINDOW_HEIGHT - 20.,

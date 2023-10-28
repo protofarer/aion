@@ -67,12 +67,13 @@ impl Ship {
             },
             RotationalInputCpt::new(),
             ProjectileEmitterCpt {
-                projectile_velocity: Vec2::new(0., 0.),
+                projectile_speed: 300.,
                 cooldown: 250,
                 projectile_duration: time::Duration::new(0, 3000_000_000),
                 hit_damage: 10,
                 is_friendly: true,
-                last_emission_time: None,
+                last_emission_time: time::Instant::now(),
+                intends_to_fire: false,
             },
         )
     }

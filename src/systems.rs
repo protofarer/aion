@@ -1,6 +1,8 @@
 use std::time::{self, Duration};
 
+use crate::archetypes::{gen_projectile, ArchProjectile};
 use crate::game::{RunState, WindowDims};
+use crate::pixel::{RED, WHITE};
 use crate::time::Dt;
 use crate::{components::*, dev, LOGICAL_WINDOW_HEIGHT, LOGICAL_WINDOW_WIDTH};
 use hecs::{Entity, Query, QueryBorrow, With, Without, World};
@@ -16,25 +18,44 @@ use winit_input_helper::WinitInputHelper;
 ////////////////////////////////////////////////////////////////////////////////
 
 pub fn system_process_human_input(world: &mut World, runstate: RunState, input: &WinitInputHelper) {
-    for (_id, (rotational_input, move_attributes, transform, rigidbody, rotatablebody)) in world
-        .query_mut::<With<
-            (
-                &mut RotationalInputCpt,
-                &MoveAttributesCpt,
-                &mut TransformCpt,
-                &mut RigidBodyCpt,
-                &mut RotatableBodyCpt,
-            ),
-            &HumanInputCpt,
-        >>()
-    {
+    for (
+        _id,
+        (
+            rotational_input,
+            move_attributes,
+            transform,
+            rigidbody,
+            rotatablebody,
+            projectile_emitter,
+        ),
+    ) in world.query_mut::<With<
+        (
+            &mut RotationalInputCpt,
+            &MoveAttributesCpt,
+            &mut TransformCpt,
+            &mut RigidBodyCpt,
+            &mut RotatableBodyCpt,
+            &mut ProjectileEmitterCpt,
+        ),
+        &HumanInputCpt,
+    >>() {
         set_rotational_input_component_by_human(input, runstate, rotational_input);
 
         // set rotation_rate sign
         set_rotatablebody_component(rotational_input, rotatablebody, move_attributes);
         set_rigidbody_component(transform, rotational_input, rigidbody, move_attributes);
+
+        if runstate == RunState::Running {
+            // use not (!) keydowns to unset move inputs instead of keyups (released) because they work with low (<50) update rates (UPS)
+            if input.key_pressed(VirtualKeyCode::Space) || input.key_held(VirtualKeyCode::Space) {
+                projectile_emitter.intends_to_fire = true;
+            } else {
+                projectile_emitter.intends_to_fire = false;
+            }
+        }
     }
 }
+
 fn set_rigidbody_component(
     transform: &TransformCpt,
     rotational_input: &RotationalInputCpt,
@@ -125,6 +146,31 @@ fn set_rotational_input_component_by_human(
 ////////////////////////////////////////////////////////////////////////////////
 // Projectile Creation
 ////////////////////////////////////////////////////////////////////////////////
+pub fn system_projectile_emission(world: &mut World) {
+    let mut projectiles_to_spawn: Vec<ArchProjectile> = vec![];
+    for (ent, (tx, pe, cc)) in
+        world.query_mut::<(&TransformCpt, &mut ProjectileEmitterCpt, &CircleColliderCpt)>()
+    {
+        if pe.intends_to_fire {
+            let last_emit = pe.last_emission_time;
+            if last_emit.elapsed().as_millis() as i32 >= pe.cooldown {
+                pe.last_emission_time = time::Instant::now();
+                let dx_theta = (tx.heading).cos();
+                let dy_theta = (tx.heading).sin();
+                let x = tx.position.x + dx_theta * cc.r;
+                let y = tx.position.y + dy_theta * cc.r;
+                let vx = pe.projectile_speed * dx_theta;
+                let vy = pe.projectile_speed * dy_theta;
+                let projectile =
+                    gen_projectile(x, y, vx, vy, time::Duration::new(3, 0), pe.hit_damage, RED);
+                projectiles_to_spawn.push(projectile);
+            }
+        }
+    }
+    for projectile in projectiles_to_spawn {
+        world.spawn(projectile);
+    }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 // Integrate for Motion
