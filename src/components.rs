@@ -287,6 +287,9 @@ impl DrawData {
     pub fn default_circle() -> DrawData {
         DrawData::R(10.)
     }
+    pub fn default_partile() -> DrawData {
+        DrawData::Particle
+    }
 }
 
 // cant use copy because DrawData has a Vec type, must clone where needed
