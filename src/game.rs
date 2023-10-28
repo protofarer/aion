@@ -121,24 +121,7 @@ impl Game {
         dev!("SETUP start");
 
         let _ = self.world.spawn(HumanShip::new());
-        // self.world.spawn(Circloid::new());
         spawn_scenario1(&mut self.world);
-
-        // todo generate a good explorative scenario
-        // - noncolliding every color particle, bounce vertical (color tweaks)
-        // - 1 pair pass-thru particles
-        // - noncolliding & colliding projectile, bounce vertical
-        // - noncolliding & colliding circloids, bounce vertical
-        // - noncolliding & colliding ships, bounce vertical
-
-        // self.world.spawn_batch(
-        //     gen_buncha_rng_particles(1000)
-        //         .into_iter()
-        //         .map(|arch_particle| arch_particle.into_tuple()),
-        // );
-        // self.world.spawn_batch(gen_row_particles());
-        // self.world
-        //     .spawn_batch(gen_passing_particles().into_iter().map(|p| p.into_tuple()));
 
         self.loop_controller.run();
         dev!("SETUP fin");
@@ -154,6 +137,7 @@ impl Game {
         system_boundary_restrict_particle(&mut self.world);
         system_circle_collision(&mut self.world);
         system_particle_collision(&mut self.world);
+        // ai goes somewhere at the end and produces an input to be handled in next update tick
     }
 
     pub fn render(&mut self, pixels: &mut Pixels, dbg_ctx: &DebugContext) {

@@ -100,24 +100,22 @@ fn set_rotational_input_component_by_human(
     rotational_input: &mut RotationalInputCpt,
 ) {
     if runstate == RunState::Running {
-        // HANDLE SINGLE MOVE KEYS
+        // use not (!) keydowns to unset move inputs instead of keyups (released) because they work with low (<50) update rates (UPS)
         if input.key_pressed(VirtualKeyCode::D) || input.key_held(VirtualKeyCode::D) {
             rotational_input.turn_sign = Some(Turn::Right);
-        }
-        if input.key_pressed(VirtualKeyCode::A) || input.key_held(VirtualKeyCode::A) {
+        } else if input.key_pressed(VirtualKeyCode::A) || input.key_held(VirtualKeyCode::A) {
             rotational_input.turn_sign = Some(Turn::Left);
+        } else {
+            // explicit resets, don't depend on keyup
+            rotational_input.turn_sign = None;
         }
+
         if input.key_pressed(VirtualKeyCode::W) || input.key_held(VirtualKeyCode::W) {
             rotational_input.is_thrusting = true;
+        } else {
+            // explicit resets, don't depend on keyup
+            rotational_input.is_thrusting = false;
         }
-    }
-
-    // HANDLE KEY UPS
-    if input.key_released(VirtualKeyCode::D) || input.key_released(VirtualKeyCode::A) {
-        rotational_input.turn_sign = None;
-    }
-    if input.key_released(VirtualKeyCode::W) {
-        rotational_input.is_thrusting = false;
     }
 }
 

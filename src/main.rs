@@ -59,7 +59,7 @@ pub const LOGICAL_WINDOW_HEIGHT: f32 = 540.;
 pub const PHYSICAL_WINDOW_WIDTH: f32 = 1920.;
 pub const PHYSICAL_WINDOW_HEIGHT: f32 = 1080.;
 pub const INIT_DT: Duration = Duration::from_millis(16);
-const UPDATES_PER_SECOND: u32 = 120;
+const UPDATES_PER_SECOND: u32 = 10;
 const MAX_FRAME_TIME: f64 = 0.1;
 
 pub struct DebugContext {
