@@ -132,11 +132,12 @@ impl Game {
         system_process_human_input(&mut self.world, runstate, &self.input);
         system_integrate_rotation(&mut self.world, &dt);
         system_integrate_translation(&mut self.world, &dt);
-        system_boundary_restrict_circle(&mut self.world);
-        system_boundary_restrict_projectile(&mut self.world);
-        system_boundary_restrict_particle(&mut self.world);
-        system_circle_collision(&mut self.world);
-        system_particle_collision(&mut self.world);
+        system_boundary_restrict_circloid(&mut self.world);
+        system_boundary_restrict_particletypes(&mut self.world);
+        test_system_boundary_restrict_particle(&mut self.world);
+        system_collision_detection(&mut self.world);
+        system_collision_resolution(&mut self.world);
+        // system_particle_collision(&mut self.world);
         // ai goes somewhere at the end and produces an input to be handled in next update tick
     }
 

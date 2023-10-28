@@ -1,4 +1,5 @@
 // Discrete game avatars aka prefigured bags of components for game-specific characters/agents/actors
+// aka bags of components with data corresponding to a game end-actor object
 // focused on specifying component data to support desired form and function
 // directly spawnable by hecs world spawn functions
 

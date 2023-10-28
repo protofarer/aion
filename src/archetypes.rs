@@ -9,6 +9,9 @@ use rand::Rng;
 
 use crate::{components::*, pixel::*, LOGICAL_WINDOW_HEIGHT, LOGICAL_WINDOW_WIDTH};
 
+// ArchParticle
+// - particle primitive
+// - doesnt collide
 pub type ArchParticle = (TransformCpt, RigidBodyCpt, DrawBodyCpt);
 
 pub fn gen_particle(x: f32, y: f32, vx: f32, vy: f32, color: Color) -> ArchParticle {
@@ -52,6 +55,8 @@ pub fn gen_buncha_rng_particles(n: i32) -> Vec<ArchParticle> {
     (0..n).map(|_| gen_particle_rng()).collect()
 }
 
+// ArchCircloid
+// - embodied circle, collidable
 pub type ArchCircloid = (TransformCpt, RigidBodyCpt, DrawBodyCpt, CircleColliderCpt);
 
 pub fn gen_circloid(x: f32, y: f32, vx: f32, vy: f32, r: f32, color: Color) -> ArchCircloid {
@@ -108,6 +113,8 @@ pub fn gen_buncha_rng_circloids(n: i32) -> Vec<ArchCircloid> {
     (0..n).map(|_| gen_circloid_rng()).collect()
 }
 
+// ArchProjectile
+// - a collidable particle (for now aka ParticleProjectile, later impl AreaProjectile / CircloidProjectile / ...)
 pub type ArchProjectile = (TransformCpt, RigidBodyCpt, DrawBodyCpt, ParticleColliderCpt);
 
 pub fn gen_projectile(x: f32, y: f32, vx: f32, vy: f32, color: Color) -> ArchProjectile {

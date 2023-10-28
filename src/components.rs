@@ -1,4 +1,5 @@
 use crate::pixel::{Color, BLUE, CYAN, GREEN, GREY, MAGENTA, ORANGE, RED, WHITE, YELLOW};
+use hecs::Entity;
 use nalgebra_glm::Vec2;
 use std::{default, time};
 
@@ -300,4 +301,10 @@ impl DrawBodyCpt {
             data: DrawData::new(),
         }
     }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct CollisionDetectionEvent {
+    pub a: Entity,
+    pub b: Entity,
 }

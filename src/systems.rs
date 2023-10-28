@@ -11,6 +11,10 @@ use winit_input_helper::WinitInputHelper;
 // todo ai input -> rotationalinputcpt
 // human input -> rotationalinputcpt
 
+////////////////////////////////////////////////////////////////////////////////
+// PROCESS INPUTS
+////////////////////////////////////////////////////////////////////////////////
+
 pub fn system_process_human_input(world: &mut World, runstate: RunState, input: &WinitInputHelper) {
     for (_id, (rotational_input, move_attributes, transform, rigidbody, rotatablebody)) in world
         .query_mut::<With<
@@ -118,7 +122,13 @@ fn set_rotational_input_component_by_human(
         }
     }
 }
+////////////////////////////////////////////////////////////////////////////////
+// Projectile Creation
+////////////////////////////////////////////////////////////////////////////////
 
+////////////////////////////////////////////////////////////////////////////////
+// Integrate for Motion
+////////////////////////////////////////////////////////////////////////////////
 pub fn system_integrate_rotation(world: &mut World, dt: &Dt) {
     for (id, (transform, rotatablebody)) in
         world.query_mut::<(&mut TransformCpt, &RotatableBodyCpt)>()
@@ -134,8 +144,10 @@ pub fn system_integrate_translation(world: &mut World, dt: &Dt) {
     }
 }
 
-// only for CircleColliders
-pub fn system_boundary_restrict_circle(world: &mut World) {
+////////////////////////////////////////////////////////////////////////////////
+// React to Game World Boundary
+////////////////////////////////////////////////////////////////////////////////
+pub fn system_boundary_restrict_circloid(world: &mut World) {
     for (id, (transform, rigidbody, collision_circle)) in
         world.query_mut::<(&mut TransformCpt, &mut RigidBodyCpt, &CircleColliderCpt)>()
     {
@@ -163,33 +175,7 @@ pub fn system_boundary_restrict_circle(world: &mut World) {
     }
 }
 
-pub fn system_circle_collision(world: &mut World) {
-    let mut entities: Vec<(Entity, TransformCpt, CircleColliderCpt)> = vec![];
-    // todo improve collecting entity and components, use chain method and
-    // collector https://docs.rs/hecs/latest/hecs/struct.QueryBorrow.html
-    for (entity, (transform, rigidbody)) in world.query_mut::<(&TransformCpt, &CircleColliderCpt)>()
-    {
-        entities.push((entity, *transform, *rigidbody));
-    }
-    let mut colliding_entities: Vec<&Entity> = vec![];
-    for (i, (entity1, tx1, cx1)) in entities.iter().enumerate() {
-        for (entity2, tx2, cx2) in entities[i + 1..].iter() {
-            let dx = tx2.position.x - tx1.position.x;
-            let dy = tx2.position.y - tx1.position.y;
-            let dr = (dx.powf(2.0) + dy.powf(2.0)).sqrt();
-            if dr < (cx1.r + cx2.r) {
-                dev!("COLLISION DETECTED");
-                colliding_entities.push(entity1);
-                colliding_entities.push(entity2);
-            }
-        }
-    }
-    for &entity in colliding_entities {
-        world.despawn(entity);
-    }
-}
-
-pub fn system_boundary_restrict_projectile(world: &mut World) {
+pub fn system_boundary_restrict_particletypes(world: &mut World) {
     for (id, (transform, rigidbody)) in
         world.query_mut::<With<(&mut TransformCpt, &mut RigidBodyCpt), &ParticleColliderCpt>>()
     {
@@ -213,7 +199,8 @@ pub fn system_boundary_restrict_projectile(world: &mut World) {
     }
 }
 
-pub fn system_boundary_restrict_particle(world: &mut World) {
+// tmp for development, keep avatars in view
+pub fn test_system_boundary_restrict_particle(world: &mut World) {
     for (id, (transform, rigidbody)) in
         world.query_mut::<Without<
             (&mut TransformCpt, &mut RigidBodyCpt),
@@ -240,37 +227,110 @@ pub fn system_boundary_restrict_particle(world: &mut World) {
     }
 }
 
-// particles do not collide with each other
-pub fn system_particle_collision(world: &mut World) {
-    let particle_data = world
-        .query::<With<&TransformCpt, &ParticleColliderCpt>>()
-        .iter()
-        .map(|(e, &tx)| (e, tx))
-        .collect::<Vec<_>>();
+////////////////////////////////////////////////////////////////////////////////
+// Collision Detection
+////////////////////////////////////////////////////////////////////////////////
+pub fn system_collision_detection(world: &mut World) {
+    let mut colliding_entities: Vec<(Entity, Entity)> = vec![];
+    let circloid_components: Vec<(Entity, TransformCpt, CircleColliderCpt)>;
+    {
+        // Circloid vs Circloid
+        let mut query_circloids = world.query::<(&TransformCpt, &CircleColliderCpt)>();
+        circloid_components = query_circloids
+            .iter()
+            .map(|(e, (tx, cc))| (e, tx.clone(), cc.clone()))
+            .collect::<Vec<_>>();
+    }
 
-    let circloid_data = world
-        .query::<(&TransformCpt, &CircleColliderCpt)>()
-        .iter()
-        .map(|(e, (&tx, &cx))| (e, tx, cx))
-        .collect::<Vec<_>>();
-
-    let mut colliding_entities: Vec<&Entity> = vec![];
-    for (i, (circloid, tx_c, cx_c)) in circloid_data.iter().enumerate() {
-        for (particle, tx_p) in particle_data.iter() {
-            let dx = tx_p.position.x - tx_c.position.x;
-            let dy = tx_p.position.y - tx_c.position.y;
+    // todo how to query_mut and enumerate?
+    for (i, (ent_a, tx_a, cc_a)) in circloid_components.iter().enumerate() {
+        for (ent_b, tx_b, cc_b) in circloid_components[i + 1..].iter() {
+            let dx = tx_b.position.x - tx_a.position.x;
+            let dy = tx_b.position.y - tx_a.position.y;
             let dr = (dx.powf(2.0) + dy.powf(2.0)).sqrt();
-            if dr <= (cx_c.r) {
-                dev!("COLLISION DETECTED");
-                colliding_entities.push(circloid);
-                colliding_entities.push(particle);
+            if dr < (cc_a.r + cc_b.r) {
+                colliding_entities.push((*ent_a, *ent_b));
             }
         }
     }
-    for &entity in colliding_entities {
-        world.despawn(entity);
+    {
+        let mut query_projectiles = world.query::<With<&TransformCpt, &ParticleColliderCpt>>();
+        let projectile_components = query_projectiles
+            .iter()
+            .map(|(e, tx)| (e, tx))
+            .collect::<Vec<_>>();
+
+        for (i, (circloid, tx_c, cc_c)) in circloid_components.iter().enumerate() {
+            for (projectile, tx_p) in projectile_components.iter() {
+                let dx = tx_p.position.x - tx_c.position.x;
+                let dy = tx_p.position.y - tx_c.position.y;
+                let dr = (dx.powf(2.0) + dy.powf(2.0)).sqrt();
+                if dr <= (cc_c.r) {
+                    colliding_entities.push((*circloid, *projectile));
+                }
+            }
+        }
+    }
+
+    for collision_pair in colliding_entities {
+        world.spawn((CollisionDetectionEvent {
+            a: collision_pair.0,
+            b: collision_pair.1,
+        },));
+    }
+
+    // for &entity in colliding_entities {
+    //     world.despawn(entity);
+    // }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Collision Resolution Dispatcher
+////////////////////////////////////////////////////////////////////////////////
+pub fn system_collision_resolution(world: &mut World) {
+    // Different resolutions depending on the kind of collision detection event
+    // e.g. Dispatches more event components to be handled by downstream systems
+    // 1. vary on archetypes
+    // 2. vary on event data (tbd another field on CollisionDetectionEvent)
+    let mut colliding_circloids_projectiles: Vec<(Entity, Entity)> = vec![];
+    {
+        let mut query_collision_events = world.query::<&CollisionDetectionEvent>();
+        let collision_events = query_collision_events.iter().collect::<Vec<_>>();
+
+        for (ent, collision_event) in collision_events {
+            let ent_a = collision_event.a;
+            let ent_b = collision_event.b;
+
+            // Collect collision data of interest
+
+            // resolve projectile vs circloid
+            if (world.get::<&ParticleColliderCpt>(ent_a).is_ok()
+                && world.get::<&CircleColliderCpt>(ent_b).is_ok())
+                || (world.get::<&CircleColliderCpt>(ent_a).is_ok()
+                    && world.get::<&ParticleColliderCpt>(ent_b).is_ok())
+            {
+                // ? Dispatch further event components from here
+                // for now just despawn as a resolution
+                colliding_circloids_projectiles.push((ent_a, ent_b));
+            }
+            // resolve circloid vs circloid
+            if (world.get::<&CircleColliderCpt>(ent_a).is_ok()
+                && world.get::<&CircleColliderCpt>(ent_b).is_ok())
+            {
+                // ? Dispatch further event components from here
+                // for now just despawn as a resolution
+                colliding_circloids_projectiles.push((ent_a, ent_b));
+            }
+        }
+    }
+
+    // This is a reaction to a collision events, should be in another system
+    for pair in colliding_circloids_projectiles.into_iter() {
+        world.despawn(pair.0);
+        world.despawn(pair.1);
     }
 }
+
 // #[system]
 // pub fn circle_collision(
 //     query: &mut Query<(Entity, &TransformCpt, &CircleColliderCpt)>,
