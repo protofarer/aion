@@ -1,5 +1,6 @@
 use std::time;
 
+use hecs::Entity;
 use nalgebra_glm::Vec2;
 use rand::Rng;
 
@@ -57,25 +58,29 @@ pub fn gen_buncha_rng_particles(n: i32) -> Vec<ArchParticle> {
     (0..n).map(|_| gen_particle_rng()).collect()
 }
 
-pub type ArchOrbitParticle = (TransformCpt, RigidBodyCpt, DrawBodyCpt, OrbitParticleCpt);
+pub type ArchOrbitParticle = (TransformCpt, DrawBodyCpt, OrbitParticleCpt);
+// Either orbit something, thus has a relation via radius and angle, has a
+// parent entity with a transformcpt
+// Or not orbitting an object and orbits in place.
+// Can be used for both effects and projectiles
 
-pub fn gen_orbiting_particle(
-    x: f32,
-    y: f32,
-    vx: f32,
-    vy: f32,
+pub fn gen_unattached_orbiting_particle(
+    x_c: f32,
+    y_c: f32,
+    vx_c: f32,
+    vy_c: f32,
     r: f32,
     speed: f32,
     color: Color,
 ) -> ArchOrbitParticle {
+    let angle = Theta::new();
+    let dx_from_center = r * angle.get().cos();
+    let dy_from_center = r * angle.get().sin();
     (
         TransformCpt {
-            position: Vec2::new(x, y),
-            heading: Theta::new(),
+            position: Vec2::new(x_c + dx_from_center, y_c + dx_from_center),
+            heading: angle,
             scale: Vec2::new(1.0, 1.0),
-        },
-        RigidBodyCpt {
-            velocity: Vec2::new(vx, vy),
         },
         DrawBodyCpt {
             colorbody: ColorBodyCpt {
@@ -87,7 +92,39 @@ pub fn gen_orbiting_particle(
         OrbitParticleCpt {
             r,
             speed,
-            parent: None,
+            attached_to: None,
+            angle: Theta::new(),
+        },
+    )
+}
+
+pub fn gen_attached_orbiting_particle(
+    attached_to: Entity,
+    r: f32,
+    speed: f32,
+    color: Color,
+) -> ArchOrbitParticle {
+    let angle = Theta::new();
+    let dx_from_center = r * angle.get().cos();
+    let dy_from_center = r * angle.get().sin();
+    // todo query attach_to ent to calc proper init transform
+    (
+        TransformCpt {
+            position: Vec2::new(0., 0.), // todo problematic? gets corrected during orbit particle integration. Alternatively run a query against attach_to???.. because it will be spawned in a weird place!
+            heading: angle,
+            scale: Vec2::new(1.0, 1.0),
+        },
+        DrawBodyCpt {
+            colorbody: ColorBodyCpt {
+                primary: color,
+                secondary: WHITE,
+            },
+            data: DrawData::Particle,
+        },
+        OrbitParticleCpt {
+            r,
+            speed,
+            attached_to: Some(attached_to),
             angle: Theta::new(),
         },
     )

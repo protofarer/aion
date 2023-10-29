@@ -173,14 +173,58 @@ pub fn system_integrate_translation(world: &mut World, dt: &Dt) {
 }
 
 pub fn system_integrate_orbiting_particles(world: &mut World, dt: &Dt) {
-    for (ent, (transform, orbitparticle)) in
-        world.query_mut::<(&TransformCpt, &mut OrbitParticleCpt)>()
+    let mut new_orbitpart_cpts: Vec<(Entity, TransformCpt, OrbitParticleCpt)> = vec![];
     {
+        let mut query_orbitparts = world.query::<(&TransformCpt, &OrbitParticleCpt)>();
+        new_orbitpart_cpts = query_orbitparts
+            .iter()
+            .map(|(ent, (transform, orbitpart))| (ent, transform.clone(), orbitpart.clone()))
+            .collect::<Vec<_>>();
+    }
+
+    for (ent_orbitpart, transform, orbitpart) in new_orbitpart_cpts.iter() {
         // ang_vel = vel / r
         // ang = ang_vel * period (dt)
-        let angle_sweep = (orbitparticle.speed / orbitparticle.r) * dt.0.as_secs_f32();
-        let new_angle = orbitparticle.angle.get() + angle_sweep;
-        orbitparticle.angle.set(new_angle);
+        let ang_vel = orbitpart.speed / orbitpart.r;
+        let d_ang = ang_vel * dt.0.as_secs_f32();
+        let new_angle = orbitpart.angle.get() + d_ang;
+
+        // A. d_transform based on parent entity
+        let new_orbitpart_transform_cpt = match orbitpart.attached_to {
+            Some(entity) => {
+                let attached_transform = world.query_one_mut::<&TransformCpt>(entity).unwrap();
+                TransformCpt {
+                    position: Vec2::new(
+                        attached_transform.position.x + orbitpart.r * new_angle.cos(),
+                        attached_transform.position.y + orbitpart.r * new_angle.sin(),
+                    ),
+                    heading: transform.heading,
+                    scale: transform.scale,
+                }
+            }
+            None => {
+                // B. d_transform by first calculating the center of rotation coords
+                let x_center = transform.position.x - orbitpart.r * orbitpart.angle.cos();
+                let y_center = transform.position.y - orbitpart.r * orbitpart.angle.sin();
+
+                TransformCpt {
+                    position: Vec2::new(
+                        x_center + orbitpart.r * new_angle.cos(),
+                        y_center + orbitpart.r * new_angle.sin(),
+                    ),
+                    heading: transform.heading,
+                    scale: transform.scale,
+                }
+            }
+        };
+        world.exchange_one::<TransformCpt, TransformCpt>(
+            *ent_orbitpart,
+            new_orbitpart_transform_cpt,
+        );
+        let mut orbitpart_cpt = world
+            .query_one_mut::<(&mut OrbitParticleCpt)>(*ent_orbitpart)
+            .unwrap();
+        orbitpart_cpt.angle.set(new_angle);
     }
 }
 

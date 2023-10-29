@@ -139,7 +139,7 @@ pub struct OrbitParticleCpt {
     pub r: f32,
     pub speed: f32,
     pub angle: Theta,
-    pub parent: Option<Entity>,
+    pub attached_to: Option<Entity>,
 }
 
 impl OrbitParticleCpt {
@@ -148,7 +148,7 @@ impl OrbitParticleCpt {
             r: 10.,
             speed: 50.,
             angle: Theta::new(),
-            parent: None,
+            attached_to: None,
         }
     }
 }

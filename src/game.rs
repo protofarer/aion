@@ -11,7 +11,9 @@ use winit::event_loop::EventLoop;
 use winit::window::Window;
 use winit_input_helper::WinitInputHelper;
 
-use crate::archetypes::{gen_buncha_rng_particles, gen_orbiting_particle};
+use crate::archetypes::{
+    gen_attached_orbiting_particle, gen_buncha_rng_particles, gen_unattached_orbiting_particle,
+};
 use crate::avatars::{Circloid, HumanShip};
 use crate::draw::{draw_circle, draw_pixel, draw_rect};
 use crate::gui::Framework;
@@ -111,11 +113,16 @@ impl Game {
     pub fn setup(&mut self) {
         dev!("SETUP start");
 
-        let _ = self.world.spawn(HumanShip::new());
         // spawn_scenario1(&mut self.world);
-        self.world.spawn(gen_orbiting_particle(
-            300., 300., 100., 100., 25., 200., GREEN,
-        ));
+
+        let ship = self.world.spawn(HumanShip::new());
+
+        // self.world.spawn(gen_unattached_orbiting_particle(
+        //     300., 300., 100., 100., 25., 200., GREEN,
+        // ));
+
+        self.world
+            .spawn(gen_attached_orbiting_particle(ship, 35., 1000., GREEN));
 
         self.loop_controller.run();
         dev!("SETUP fin");
@@ -152,15 +159,13 @@ impl Game {
         draw_boundary(frame);
 
         // draw avatars
-        for (_id, (transform, drawbody)) in self
-            .world
-            .query_mut::<Without<(&TransformCpt, &DrawBodyCpt), &OrbitParticleCpt>>()
+        for (_id, (transform, drawbody)) in self.world.query_mut::<(&TransformCpt, &DrawBodyCpt)>()
         {
             draw_avatar(frame, transform, drawbody);
         }
 
         // draw orbiting particles
-        // TODO refactor this, should be done in avatar render loop
+        // ? refactor this?, could be done in avatar render loop?
         // the transformcpt for a orbitparticle should be for the particle itself
         // orbit particle integration should handle correct transform update
         // the rigidbody should represent the actual particle itself... i think
@@ -168,12 +173,26 @@ impl Game {
         // transform is important for collisions..when this becomes a sort of orbitingprojectile
         // ... or
         // ... keep this and have collision detector calculate particle real position
-        for (_id, (transform, drawbody, orbiting_particle)) in
-            self.world
-                .query_mut::<(&TransformCpt, &DrawBodyCpt, &OrbitParticleCpt)>()
-        {
-            draw_body_of_orbiting_particle(frame, transform, drawbody, orbiting_particle);
-        }
+        // ... or add an OrbitParticlePositionCpt... but then I am doing
+        // collision area calculations differently than just using transformcpt?
+        // * ... or maybe the OrbitParticleCpt HAS a position which is only used for the center of the orbit!
+        // - then no need for rigidbody, add velocity to cpt itself
+        // - (add in rigidbodycpt)
+        // - re-use RotatableBodyCpt for the theta speed, perhaps add a MoveAttributes for speed
+        // ? - is it best to define kinematics in terms of theta or tangential velocity?
+
+        // orbiting particle showdown
+        // - transform is actual particle position
+        // - have a settable speed (easier to think about than angular_velocity) and r
+        // - rigidbody velocity reflects above, is for actual particle
+        // - can have a TransformParentCpt, whose entity the orbital center position will copy
+
+        // for (_id, (transform, drawbody, orbiting_particle)) in
+        //     self.world
+        //         .query_mut::<(&TransformCpt, &DrawBodyCpt, &OrbitParticleCpt)>()
+        // {
+        //     draw_body_of_orbiting_particle(frame, transform, drawbody, orbiting_particle);
+        // }
 
         if dbg_ctx.is_drawing_collisionareas {
             for (_id, (transform, collision_circle)) in self
