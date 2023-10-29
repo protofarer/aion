@@ -74,12 +74,11 @@ struct InputContext {
     framework: Rc<RefCell<Framework>>,
 }
 
-pub const TITLE: &'static str = "Aion";
-pub const LOGICAL_WINDOW_WIDTH: f32 = 960.;
-pub const LOGICAL_WINDOW_HEIGHT: f32 = 540.;
-pub const PHYSICAL_WINDOW_WIDTH: f32 = 1920.;
-pub const PHYSICAL_WINDOW_HEIGHT: f32 = 1080.;
-pub const INIT_DT: Duration = Duration::from_millis(16);
+const TITLE: &'static str = "Aion";
+pub static LOGICAL_WINDOW_WIDTH: f32 = 960.;
+pub static LOGICAL_WINDOW_HEIGHT: f32 = 540.;
+pub static PHYSICAL_WINDOW_WIDTH: f32 = 1920.;
+pub static PHYSICAL_WINDOW_HEIGHT: f32 = 1080.;
 const UPDATES_PER_SECOND: u32 = 60;
 const MAX_FRAME_TIME: f64 = 0.1;
 

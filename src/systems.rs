@@ -65,8 +65,8 @@ fn set_rigidbody_component(
     // read thrust input and current heading, change rigidbody velocity
     match rotational_input.is_thrusting {
         true => {
-            rigidbody.velocity.x = (transform.heading).cos() * move_attributes.speed as f32;
-            rigidbody.velocity.y = (transform.heading).sin() * move_attributes.speed as f32;
+            rigidbody.velocity.x = transform.heading.cos() * move_attributes.speed as f32;
+            rigidbody.velocity.y = transform.heading.sin() * move_attributes.speed as f32;
         }
         false => {
             // test when decel cross 0 in either direction
@@ -94,8 +94,6 @@ fn set_rotatablebody_component(
             rotatablebody.rotation_rate = 0.;
         }
     }
-
-    // todo update heading
 }
 
 // todo Ideally: key input event -> key<->control mapping -> control event or set control component
@@ -161,8 +159,10 @@ pub fn system_integrate_rotation(world: &mut World, dt: &Dt) {
     for (id, (transform, rotatablebody)) in
         world.query_mut::<(&mut TransformCpt, &RotatableBodyCpt)>()
     {
-        transform.heading = (transform.heading + rotatablebody.rotation_rate * dt.0.as_secs_f32())
-            % (2.0 * nalgebra_glm::pi::<f32>());
+        transform.heading.set(
+            (transform.heading.get() + rotatablebody.rotation_rate * dt.0.as_secs_f32())
+                % (2.0 * nalgebra_glm::pi::<f32>()),
+        );
     }
 }
 
@@ -272,7 +272,6 @@ pub fn system_collision_detection(world: &mut World) {
             .collect::<Vec<_>>();
     }
 
-    // todo how to query_mut and enumerate?
     for (i, (ent_a, tx_a, cc_a)) in circloid_components.iter().enumerate() {
         for (ent_b, tx_b, cc_b) in circloid_components[i + 1..].iter() {
             let dx = tx_b.position.x - tx_a.position.x;
@@ -308,10 +307,6 @@ pub fn system_collision_detection(world: &mut World) {
             b: collision_pair.1,
         },));
     }
-
-    // for &entity in colliding_entities {
-    //     world.despawn(entity);
-    // }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -324,6 +319,9 @@ pub fn system_collision_resolution(world: &mut World) {
     // 1. vary on archetypes
     // 2. vary on event data (tbd another field on CollisionDetectionEvent)
     let mut colliding_circloids_projectiles: Vec<(Entity, Entity)> = vec![];
+    let mut colliding_circloids_circloids: Vec<(Entity, Entity)> = vec![];
+    let mut physical_damage_particles_circloids: Vec<(Entity, Entity)> = vec![];
+    let mut ents_to_despawn: Vec<Entity> = vec![];
     {
         let mut query_collision_events = world.query::<&CollisionDetectionEvent>();
         let collision_events = query_collision_events.iter().collect::<Vec<_>>();
@@ -332,32 +330,78 @@ pub fn system_collision_resolution(world: &mut World) {
             let ent_a = collision_event.a;
             let ent_b = collision_event.b;
 
-            // Collect collision data of interest
-
-            // resolve projectile vs circloid
+            // Resolve projectile vs circloid
             if (world.get::<&ParticleColliderCpt>(ent_a).is_ok()
-                && world.get::<&CircleColliderCpt>(ent_b).is_ok())
-                || (world.get::<&CircleColliderCpt>(ent_a).is_ok()
-                    && world.get::<&ParticleColliderCpt>(ent_b).is_ok())
+                && world.get::<&CircleColliderCpt>(ent_b).is_ok()
+                && world.get::<&HealthCpt>(ent_b).is_ok())
             {
-                // ? Dispatch further event components from here
-                // for now just despawn as a resolution
-                colliding_circloids_projectiles.push((ent_a, ent_b));
+                physical_damage_particles_circloids.push((ent_a, ent_b));
+                ents_to_despawn.push(ent_a);
+            } else if (world.get::<&CircleColliderCpt>(ent_a).is_ok()
+                && world.get::<&HealthCpt>(ent_a).is_ok()
+                && world.get::<&ParticleColliderCpt>(ent_b).is_ok())
+            {
+                physical_damage_particles_circloids.push((ent_b, ent_a));
+                ents_to_despawn.push(ent_b);
             }
+
             // resolve circloid vs circloid
             if (world.get::<&CircleColliderCpt>(ent_a).is_ok()
                 && world.get::<&CircleColliderCpt>(ent_b).is_ok())
             {
-                // ? Dispatch further event components from here
-                // for now just despawn as a resolution
-                colliding_circloids_projectiles.push((ent_a, ent_b));
+                // colliding_circloids_circloids.push((ent_a, ent_b));
             }
         }
     }
-
     // This is a reaction to a collision events, should be in another system
-    for pair in colliding_circloids_projectiles.into_iter() {
-        world.despawn(pair.0);
-        world.despawn(pair.1);
+    // for pair in colliding_circloids_projectiles.into_iter() {
+    //     world.despawn(pair.0);
+    //     world.despawn(pair.1);
+    // }
+    // for pair in colliding_circloids_circloids.into_iter() {
+    //     world.despawn(pair.0);
+    //     world.despawn(pair.1);
+    // }
+    for (sender, receiver) in physical_damage_particles_circloids.into_iter() {
+        dev!("creating phys dmg event");
+        let damage;
+        {
+            let projectile = world.get::<&ProjectileCpt>(sender).unwrap();
+            damage = projectile.hit_damage;
+        }
+        world.spawn((PhysicalDamageEvent { receiver, damage },));
+    }
+
+    for ent in ents_to_despawn {
+        world.despawn(ent);
+    }
+}
+
+pub fn system_physical_damage_resolution(world: &mut World) {
+    // apply projectile damage to avatars
+    let mut apply_damage: Vec<(Entity, Entity, i32)> = world
+        .query::<&PhysicalDamageEvent>()
+        .iter()
+        .map(|(e, (ev))| (e, ev.receiver, ev.damage))
+        .collect();
+
+    let mut killed_bodies: Vec<Entity> = vec![];
+    for (ent, receiver, dmg) in apply_damage.iter() {
+        // * query_one, not query_one_mut nor get
+        let mut query = world.query_one::<&mut HealthCpt>(*receiver).unwrap();
+        let health = query.get().unwrap();
+        health.hp -= dmg;
+        if health.hp <= 0 {
+            killed_bodies.push(*receiver);
+        }
+    }
+
+    // cleanup events
+    for (ent, _rcvr, _dmg) in apply_damage.into_iter() {
+        world.despawn(ent);
+    }
+
+    for killed_body in killed_bodies {
+        world.despawn(killed_body);
     }
 }

@@ -6,16 +6,46 @@ use std::{default, time};
 #[derive(Clone, Copy, Debug, PartialEq, Default)]
 pub struct TransformCpt {
     pub position: Vec2,
-    pub heading: f32,
+    pub heading: Theta,
     pub scale: Vec2,
 }
 impl TransformCpt {
     pub fn new() -> Self {
         Self {
             position: Vec2::new(100., 100.),
-            heading: 0.,
+            heading: Theta::new(),
             scale: Vec2::new(1., 1.),
         }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Default)]
+pub struct Theta(f32);
+impl Theta {
+    pub fn new() -> Self {
+        Theta(0.)
+    }
+    pub fn unit_x(&self) -> f32 {
+        (self.0).cos()
+    }
+    pub fn unit_y(&self) -> f32 {
+        (self.0).sin()
+    }
+    pub fn d_degrees(&mut self, deg: f32) {
+        let rad = deg * nalgebra_glm::pi::<f32>() / 180.0;
+        self.0 = (self.0 + rad) % nalgebra_glm::two_pi::<f32>()
+    }
+    pub fn cos(&self) -> f32 {
+        (self.0).cos()
+    }
+    pub fn sin(&self) -> f32 {
+        (self.0).sin()
+    }
+    pub fn get(&self) -> f32 {
+        self.0
+    }
+    pub fn set(&mut self, x: f32) {
+        self.0 = x;
     }
 }
 
@@ -71,7 +101,7 @@ impl MoveAttributesCpt {
     pub fn new() -> Self {
         Self {
             speed: 500.0,
-            turn_rate: 12.0,
+            turn_rate: 10.0,
         }
     }
 }
@@ -312,4 +342,20 @@ impl DrawBodyCpt {
 pub struct CollisionDetectionEvent {
     pub a: Entity,
     pub b: Entity,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct PhysicalDamageEvent {
+    pub receiver: Entity,
+    pub damage: i32,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+pub struct HealthCpt {
+    pub hp: i32,
+}
+impl HealthCpt {
+    pub fn new() -> Self {
+        HealthCpt { hp: 100 }
+    }
 }

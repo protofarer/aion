@@ -49,14 +49,14 @@ fn transform_body_data(
                 rotate_point(
                     t_pt1.x,
                     t_pt1.y,
-                    transform.heading,
+                    transform.heading.get(),
                     transform.position.x,
                     transform.position.y,
                 ),
                 rotate_point(
                     t_pt2.x,
                     t_pt2.y,
-                    transform.heading,
+                    transform.heading.get(),
                     transform.position.x,
                     transform.position.y,
                 ),

@@ -20,7 +20,7 @@ pub fn gen_particle(x: f32, y: f32, vx: f32, vy: f32, color: Color) -> ArchParti
     (
         TransformCpt {
             position: Vec2::new(x, y),
-            heading: 0.0,
+            heading: Theta::new(),
             scale: Vec2::new(1.0, 1.0),
         },
         RigidBodyCpt {
@@ -59,13 +59,19 @@ pub fn gen_buncha_rng_particles(n: i32) -> Vec<ArchParticle> {
 
 // ArchCircloid
 // - embodied circle, collidable
-pub type ArchCircloid = (TransformCpt, RigidBodyCpt, DrawBodyCpt, CircleColliderCpt);
+pub type ArchCircloid = (
+    TransformCpt,
+    RigidBodyCpt,
+    DrawBodyCpt,
+    CircleColliderCpt,
+    HealthCpt,
+);
 
 pub fn gen_circloid(x: f32, y: f32, vx: f32, vy: f32, r: f32, color: Color) -> ArchCircloid {
     (
         TransformCpt {
             position: Vec2::new(x, y),
-            heading: 0.0,
+            heading: Theta::new(),
             scale: Vec2::new(1.0, 1.0),
         },
         RigidBodyCpt {
@@ -79,6 +85,7 @@ pub fn gen_circloid(x: f32, y: f32, vx: f32, vy: f32, r: f32, color: Color) -> A
             data: DrawData::R(r),
         },
         CircleColliderCpt { r },
+        HealthCpt::new(),
     )
 }
 
@@ -137,7 +144,7 @@ pub fn gen_projectile(
     (
         TransformCpt {
             position: Vec2::new(x, y),
-            heading: 0.0,
+            heading: Theta::new(),
             scale: Vec2::new(1.0, 1.0),
         },
         RigidBodyCpt {

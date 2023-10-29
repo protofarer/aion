@@ -19,7 +19,7 @@ use crate::pixel::*;
 use crate::scenario::{gen_intersecting_particles, gen_row_particles, spawn_scenario1};
 use crate::time::{Dt, FrameTimer};
 use crate::util::*;
-use crate::{dev, game, log_error, INIT_DT, LOGICAL_WINDOW_HEIGHT, LOGICAL_WINDOW_WIDTH}; // little function in main.rs
+use crate::{dev, game, log_error, LOGICAL_WINDOW_HEIGHT, LOGICAL_WINDOW_WIDTH}; // little function in main.rs
 use crate::{draw_bodies::*, DebugContext};
 use nalgebra_glm::Vec2;
 use pixels::{Pixels, SurfaceTexture};
@@ -139,6 +139,7 @@ impl Game {
         test_system_boundary_restrict_particle(&mut self.world);
         system_collision_detection(&mut self.world);
         system_collision_resolution(&mut self.world);
+        system_physical_damage_resolution(&mut self.world);
         // system_particle_collision(&mut self.world);
         // ai goes somewhere at the end and produces an input to be handled in next update tick
     }

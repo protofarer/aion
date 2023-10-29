@@ -9,8 +9,9 @@ use nalgebra_glm::Vec2;
 
 use crate::{
     components::{
-        CircleColliderCpt, ColorBodyCpt, DrawBodyCpt, DrawData, HumanInputCpt, MoveAttributesCpt,
-        ProjectileEmitterCpt, RigidBodyCpt, RotatableBodyCpt, RotationalInputCpt, TransformCpt,
+        CircleColliderCpt, ColorBodyCpt, DrawBodyCpt, DrawData, HealthCpt, HumanInputCpt,
+        MoveAttributesCpt, ProjectileEmitterCpt, RigidBodyCpt, RotatableBodyCpt,
+        RotationalInputCpt, Theta, TransformCpt,
     },
     draw_bodies::generate_ship_lines,
     pixel::{BLUE, GREEN, WHITE, YELLOW},
@@ -25,7 +26,7 @@ impl Circloid {
         (
             TransformCpt {
                 position: Vec2::new(LOGICAL_WINDOW_WIDTH / 2., LOGICAL_WINDOW_HEIGHT / 2.),
-                heading: 0.,
+                heading: Theta::new(),
                 scale: Vec2::new(1.0, 1.0),
             },
             RigidBodyCpt {
@@ -54,6 +55,7 @@ impl Ship {
         ColorBodyCpt,
         RotationalInputCpt,
         ProjectileEmitterCpt,
+        HealthCpt,
     ) {
         (
             TransformCpt::new(),
@@ -75,6 +77,7 @@ impl Ship {
                 last_emission_time: time::Instant::now(),
                 intends_to_fire: false,
             },
+            HealthCpt::new(),
         )
     }
 }
@@ -91,6 +94,7 @@ impl HumanShip {
         ProjectileEmitterCpt,
         DrawBodyCpt,
         HumanInputCpt,
+        HealthCpt,
     ) {
         (
             TransformCpt::new(),
@@ -108,6 +112,7 @@ impl HumanShip {
                 data: DrawData::Lines(generate_ship_lines()),
             },
             HumanInputCpt {},
+            HealthCpt::new(),
         )
     }
 }
