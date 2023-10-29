@@ -110,7 +110,7 @@ pub fn gen_attached_orbiting_particle(
     // todo query attach_to ent to calc proper init transform
     (
         TransformCpt {
-            position: Vec2::new(0., 0.), // todo problematic? gets corrected during orbit particle integration. Alternatively run a query against attach_to???.. because it will be spawned in a weird place!
+            position: Vec2::new(0., 0.), // updated to be relative to attached_to entity during orbit particle integration system run, collision afterwards, so no problem
             heading: angle,
             scale: Vec2::new(1.0, 1.0),
         },

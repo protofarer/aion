@@ -182,7 +182,7 @@ pub fn system_integrate_orbiting_particles(world: &mut World, dt: &Dt) {
             .collect::<Vec<_>>();
     }
 
-    for (ent_orbitpart, transform, orbitpart) in new_orbitpart_cpts.iter() {
+    for (ent_orbitpart, transform, mut orbitpart) in new_orbitpart_cpts.iter() {
         // ang_vel = vel / r
         // ang = ang_vel * period (dt)
         let ang_vel = orbitpart.speed / orbitpart.r;
@@ -190,41 +190,45 @@ pub fn system_integrate_orbiting_particles(world: &mut World, dt: &Dt) {
         let new_angle = orbitpart.angle.get() + d_ang;
 
         // A. d_transform based on parent entity
-        let new_orbitpart_transform_cpt = match orbitpart.attached_to {
+        match orbitpart.attached_to {
             Some(entity) => {
-                let attached_transform = world.query_one_mut::<&TransformCpt>(entity).unwrap();
-                TransformCpt {
-                    position: Vec2::new(
-                        attached_transform.position.x + orbitpart.r * new_angle.cos(),
-                        attached_transform.position.y + orbitpart.r * new_angle.sin(),
-                    ),
-                    heading: transform.heading,
-                    scale: transform.scale,
+                if let Ok(attached_transform) = world.query_one_mut::<&TransformCpt>(entity) {
+                    let new_orbitpart_transform_cpt = TransformCpt {
+                        position: Vec2::new(
+                            attached_transform.position.x + orbitpart.r * new_angle.cos(),
+                            attached_transform.position.y + orbitpart.r * new_angle.sin(),
+                        ),
+                        heading: transform.heading,
+                        scale: transform.scale,
+                    };
+                    world.exchange_one::<TransformCpt, TransformCpt>(
+                        *ent_orbitpart,
+                        new_orbitpart_transform_cpt,
+                    );
+                    let mut orbitpart_cpt = world
+                        .query_one_mut::<(&mut OrbitParticleCpt)>(*ent_orbitpart)
+                        .unwrap();
+                    orbitpart_cpt.angle.set(new_angle);
+                } else {
+                    orbitpart.attached_to = None;
                 }
             }
             None => {
-                // B. d_transform by first calculating the center of rotation coords
-                let x_center = transform.position.x - orbitpart.r * orbitpart.angle.cos();
-                let y_center = transform.position.y - orbitpart.r * orbitpart.angle.sin();
+                // B. d_transform by first calculating the center of rotation coords (for rotating around nothingness)
+                // let x_center = transform.position.x - orbitpart.r * orbitpart.angle.cos();
+                // let y_center = transform.position.y - orbitpart.r * orbitpart.angle.sin();
 
-                TransformCpt {
-                    position: Vec2::new(
-                        x_center + orbitpart.r * new_angle.cos(),
-                        y_center + orbitpart.r * new_angle.sin(),
-                    ),
-                    heading: transform.heading,
-                    scale: transform.scale,
-                }
+                // TransformCpt {
+                //     position: Vec2::new(
+                //         x_center + orbitpart.r * new_angle.cos(),
+                //         y_center + orbitpart.r * new_angle.sin(),
+                //     ),
+                //     heading: transform.heading,
+                //     scale: transform.scale,
+                // }
+                // C. like B but decidedly has nothing to rotate around and so remains in position.
             }
         };
-        world.exchange_one::<TransformCpt, TransformCpt>(
-            *ent_orbitpart,
-            new_orbitpart_transform_cpt,
-        );
-        let mut orbitpart_cpt = world
-            .query_one_mut::<(&mut OrbitParticleCpt)>(*ent_orbitpart)
-            .unwrap();
-        orbitpart_cpt.angle.set(new_angle);
     }
 }
 
