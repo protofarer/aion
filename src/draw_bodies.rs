@@ -144,6 +144,23 @@ pub fn draw_body_of_particle(frame: &mut [u8], transform: &TransformCpt, colorbo
     draw_pixel(frame, x.round() as i32, y.round() as i32, colorbody.primary);
 }
 
+pub fn draw_body_of_orbiting_particle(
+    frame: &mut [u8],
+    transform: &TransformCpt,
+    drawbody: &DrawBodyCpt,
+    orbiting_particle: &OrbitParticleCpt,
+) {
+    let mut pos = Vec2::new(0., 0.);
+    pos.x += transform.position.x + orbiting_particle.angle.cos() * orbiting_particle.r;
+    pos.y += transform.position.y + orbiting_particle.angle.sin() * orbiting_particle.r;
+    draw_pixel(
+        frame,
+        (pos.x).round() as i32,
+        (pos.y).round() as i32,
+        drawbody.colorbody.primary,
+    );
+}
+
 pub fn draw_boundary(frame: &mut [u8]) {
     let color = BLUE;
     let width = LOGICAL_WINDOW_WIDTH as i32 - 1;

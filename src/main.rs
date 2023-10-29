@@ -26,7 +26,7 @@ fn get_process_memory() -> Option<u64> {
 }
 
 use std::{
-    cell::RefCell,
+    cell::{RefCell, RefMut},
     env,
     rc::Rc,
     sync::{Arc, Mutex},
@@ -52,6 +52,52 @@ use time::FrameTimer;
 use game::Game;
 use game::{GetRunState, RunState};
 use game_loop::game_loop;
+
+// fn process_dbg_keys(&mut self, dbg_ctx: &mut DebugContext) {
+//     if self.input.key_pressed(VirtualKeyCode::P) {
+//         if self.get_runstate() == RunState::Running {
+//             self.loop_controller.pause();
+//         } else if self.get_runstate() == RunState::Paused {
+//             self.loop_controller.run();
+//         }
+//     }
+//     if self.input.key_pressed(VirtualKeyCode::Semicolon) {
+//         if self.get_runstate() == RunState::Stopped {
+//             self.loop_controller.run();
+//         } else if self.get_runstate() != RunState::Stopped {
+//             self.loop_controller.stop();
+//         }
+//     }
+//     if self.input.key_pressed(VirtualKeyCode::Grave) {
+//         dbg_ctx.is_on = !dbg_ctx.is_on;
+//     }
+//     if self.input.key_pressed(VirtualKeyCode::Key1) {
+//         dbg_ctx.is_drawing_collisionareas = !dbg_ctx.is_drawing_collisionareas;
+//     }
+// }
+
+fn process_dbg_keys(game: &mut Game, dbg_ctx: &mut DebugContext) {
+    if game.input.key_pressed(VirtualKeyCode::P) {
+        if game.get_runstate() == RunState::Running {
+            game.loop_controller.pause();
+        } else if game.get_runstate() == RunState::Paused {
+            game.loop_controller.run();
+        }
+    }
+    if game.input.key_pressed(VirtualKeyCode::Semicolon) {
+        if game.get_runstate() == RunState::Stopped {
+            game.loop_controller.run();
+        } else if game.get_runstate() != RunState::Stopped {
+            game.loop_controller.stop();
+        }
+    }
+    if game.input.key_pressed(VirtualKeyCode::Grave) {
+        dbg_ctx.is_on = !dbg_ctx.is_on;
+    }
+    if game.input.key_pressed(VirtualKeyCode::Key1) {
+        dbg_ctx.is_drawing_collisionareas = !dbg_ctx.is_drawing_collisionareas;
+    }
+}
 
 pub struct DebugContext {
     is_on: bool,
@@ -218,7 +264,7 @@ fn main() {
             }
 
             if g.game.input.update(event) {
-                g.game.process_input(&mut dbg_ctx_input.borrow_mut());
+                process_dbg_keys(&mut g.game, &mut dbg_ctx_input.borrow_mut());
 
                 if g.game.input.close_requested()
                     || g.game.input.key_pressed(VirtualKeyCode::Escape)

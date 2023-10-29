@@ -134,6 +134,25 @@ impl ParticleColliderCpt {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct OrbitParticleCpt {
+    pub r: f32,
+    pub speed: f32,
+    pub angle: Theta,
+    pub parent: Option<Entity>,
+}
+
+impl OrbitParticleCpt {
+    pub fn new() -> Self {
+        Self {
+            r: 10.,
+            speed: 50.,
+            angle: Theta::new(),
+            parent: None,
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Default)]
 pub struct ColorBodyCpt {
     pub primary: Color,

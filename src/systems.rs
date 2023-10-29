@@ -172,6 +172,18 @@ pub fn system_integrate_translation(world: &mut World, dt: &Dt) {
     }
 }
 
+pub fn system_integrate_orbiting_particles(world: &mut World, dt: &Dt) {
+    for (ent, (transform, orbitparticle)) in
+        world.query_mut::<(&TransformCpt, &mut OrbitParticleCpt)>()
+    {
+        // ang_vel = vel / r
+        // ang = ang_vel * period (dt)
+        let angle_sweep = (orbitparticle.speed / orbitparticle.r) * dt.0.as_secs_f32();
+        let new_angle = orbitparticle.angle.get() + angle_sweep;
+        orbitparticle.angle.set(new_angle);
+    }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // React to Game World Boundary
 ////////////////////////////////////////////////////////////////////////////////

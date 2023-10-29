@@ -57,6 +57,42 @@ pub fn gen_buncha_rng_particles(n: i32) -> Vec<ArchParticle> {
     (0..n).map(|_| gen_particle_rng()).collect()
 }
 
+pub type ArchOrbitParticle = (TransformCpt, RigidBodyCpt, DrawBodyCpt, OrbitParticleCpt);
+
+pub fn gen_orbiting_particle(
+    x: f32,
+    y: f32,
+    vx: f32,
+    vy: f32,
+    r: f32,
+    speed: f32,
+    color: Color,
+) -> ArchOrbitParticle {
+    (
+        TransformCpt {
+            position: Vec2::new(x, y),
+            heading: Theta::new(),
+            scale: Vec2::new(1.0, 1.0),
+        },
+        RigidBodyCpt {
+            velocity: Vec2::new(vx, vy),
+        },
+        DrawBodyCpt {
+            colorbody: ColorBodyCpt {
+                primary: color,
+                secondary: WHITE,
+            },
+            data: DrawData::Particle,
+        },
+        OrbitParticleCpt {
+            r,
+            speed,
+            parent: None,
+            angle: Theta::new(),
+        },
+    )
+}
+
 // ArchCircloid
 // - embodied circle, collidable
 pub type ArchCircloid = (

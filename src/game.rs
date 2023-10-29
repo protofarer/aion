@@ -11,7 +11,7 @@ use winit::event_loop::EventLoop;
 use winit::window::Window;
 use winit_input_helper::WinitInputHelper;
 
-use crate::archetypes::gen_buncha_rng_particles;
+use crate::archetypes::{gen_buncha_rng_particles, gen_orbiting_particle};
 use crate::avatars::{Circloid, HumanShip};
 use crate::draw::{draw_circle, draw_pixel, draw_rect};
 use crate::gui::Framework;
@@ -108,20 +108,14 @@ impl Game {
         })
     }
 
-    pub fn process_input(&mut self, dbg_context: &mut DebugContext) {
-        self.process_dbg_keys(dbg_context);
-
-        // produce player keys from key events, later, input system (ecs)
-        // processes player keys and mutates ship state
-
-        // self.process_player_control_keys();
-    }
-
     pub fn setup(&mut self) {
         dev!("SETUP start");
 
         let _ = self.world.spawn(HumanShip::new());
-        spawn_scenario1(&mut self.world);
+        // spawn_scenario1(&mut self.world);
+        self.world.spawn(gen_orbiting_particle(
+            300., 300., 100., 100., 25., 200., GREEN,
+        ));
 
         self.loop_controller.run();
         dev!("SETUP fin");
@@ -130,30 +124,55 @@ impl Game {
     pub fn update(&mut self, dt: Dt) {
         let runstate = self.get_runstate();
         // if I moved this to game.process_input?
+        if runstate != RunState::Running {
+            return;
+        }
+
         system_process_human_input(&mut self.world, runstate, &self.input);
         system_projectile_emission(&mut self.world);
         system_integrate_rotation(&mut self.world, &dt);
         system_integrate_translation(&mut self.world, &dt);
+        system_integrate_orbiting_particles(&mut self.world, &dt);
         system_boundary_restrict_circloid(&mut self.world);
         system_boundary_restrict_particletypes(&mut self.world);
         test_system_boundary_restrict_particle(&mut self.world);
         system_collision_detection(&mut self.world);
         system_collision_resolution(&mut self.world);
         system_physical_damage_resolution(&mut self.world);
-        // system_particle_collision(&mut self.world);
         // ai goes somewhere at the end and produces an input to be handled in next update tick
     }
 
     pub fn render(&mut self, pixels: &mut Pixels, dbg_ctx: &DebugContext) {
+        if (self.get_runstate() != RunState::Running) && (self.get_runstate() != RunState::Paused) {
+            return;
+        }
         let mut frame = pixels.frame_mut();
 
         clear(frame);
         draw_boundary(frame);
 
         // draw avatars
-        for (_id, (transform, drawbody)) in self.world.query_mut::<(&TransformCpt, &DrawBodyCpt)>()
+        for (_id, (transform, drawbody)) in self
+            .world
+            .query_mut::<Without<(&TransformCpt, &DrawBodyCpt), &OrbitParticleCpt>>()
         {
             draw_avatar(frame, transform, drawbody);
+        }
+
+        // draw orbiting particles
+        // TODO refactor this, should be done in avatar render loop
+        // the transformcpt for a orbitparticle should be for the particle itself
+        // orbit particle integration should handle correct transform update
+        // the rigidbody should represent the actual particle itself... i think
+        // is there a better way to do this?
+        // transform is important for collisions..when this becomes a sort of orbitingprojectile
+        // ... or
+        // ... keep this and have collision detector calculate particle real position
+        for (_id, (transform, drawbody, orbiting_particle)) in
+            self.world
+                .query_mut::<(&TransformCpt, &DrawBodyCpt, &OrbitParticleCpt)>()
+        {
+            draw_body_of_orbiting_particle(frame, transform, drawbody, orbiting_particle);
         }
 
         if dbg_ctx.is_drawing_collisionareas {
@@ -168,29 +187,6 @@ impl Game {
 
     pub fn destroy(&self) {
         dev!("DESTROY game");
-    }
-
-    fn process_dbg_keys(&mut self, dbg_ctx: &mut DebugContext) {
-        if self.input.key_pressed(VirtualKeyCode::P) {
-            if self.get_runstate() == RunState::Running {
-                self.loop_controller.pause();
-            } else if self.get_runstate() == RunState::Paused {
-                self.loop_controller.run();
-            }
-        }
-        if self.input.key_pressed(VirtualKeyCode::Semicolon) {
-            if self.get_runstate() == RunState::Stopped {
-                self.loop_controller.run();
-            } else if self.get_runstate() != RunState::Stopped {
-                self.loop_controller.stop();
-            }
-        }
-        if self.input.key_pressed(VirtualKeyCode::Grave) {
-            dbg_ctx.is_on = !dbg_ctx.is_on;
-        }
-        if self.input.key_pressed(VirtualKeyCode::Key1) {
-            dbg_ctx.is_drawing_collisionareas = !dbg_ctx.is_drawing_collisionareas;
-        }
     }
 }
 
