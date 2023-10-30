@@ -97,7 +97,11 @@ impl HumanShip {
         HealthCpt,
     ) {
         (
-            TransformCpt::new(),
+            TransformCpt {
+                position: Vec2::new(25., LOGICAL_WINDOW_HEIGHT / 2.0),
+                heading: Theta::new(),
+                scale: Vec2::new(0., 0.),
+            },
             RigidBodyCpt::new(),     // current velocity, used for physics
             RotatableBodyCpt::new(), // curent turn rate, used for physics
             MoveAttributesCpt::new(),

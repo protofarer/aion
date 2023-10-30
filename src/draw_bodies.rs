@@ -20,7 +20,7 @@ pub fn draw_avatar(frame: &mut [u8], transform: &TransformCpt, drawbody: &DrawBo
                 draw_body_of_lines(frame, transform, x.to_vec(), colorbody);
             }
             DrawData::R(r) => {
-                draw_body_of_r(frame, transform, *r, colorbody);
+                draw_body_of_circle(frame, transform, *r, colorbody);
             }
             DrawData::Particle => {
                 draw_body_of_particle(frame, transform, colorbody);
@@ -94,7 +94,7 @@ pub fn draw_body_of_lines(
 }
 
 // DrawBodtCpt's DrawData::R
-pub fn draw_body_of_r(
+pub fn draw_body_of_circle(
     frame: &mut [u8],
     transform: &TransformCpt,
     r: f32,
@@ -107,14 +107,6 @@ pub fn draw_body_of_r(
         r as i32,
         colorbody.primary,
     );
-}
-
-pub fn draw_body_of_circle(
-    frame: &mut [u8],
-    transform: &TransformCpt,
-    r: f32,
-    colorbody: &ColorBodyCpt,
-) {
 }
 
 pub fn generate_ship_lines() -> Vec<(Vec2, Vec2)> {

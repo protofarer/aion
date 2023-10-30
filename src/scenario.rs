@@ -1,18 +1,13 @@
-// todo generate row of bouncing colored particles
-// todo gen pair of pass-thru particles
-// todo gen a non-colliding proj
-// todo generate pair of pass-thru proj
-// todo gen pair of non-coll and coll circloids
-// todo gen pair of non-coll and coll ships (ensure heading flips accordingly)
-// todo put it all in a scenario
-
+use crate::{archetypes::*, pixel::*, LOGICAL_WINDOW_HEIGHT, LOGICAL_WINDOW_WIDTH};
+use hecs::World;
 use std::time;
 
-use hecs::World;
+pub fn gen_small_circloid(x: f32, y: f32, vx: f32, vy: f32, color: Color) -> ArchCircloid {
+    gen_circloid(x, y, vx, vy, 10., color)
+}
 
-use crate::{archetypes::*, pixel::*, LOGICAL_WINDOW_HEIGHT, LOGICAL_WINDOW_WIDTH};
-
-pub fn gen_row_particles() -> Vec<ArchParticle> {
+// ~35 px wide
+pub fn gen_row_particles(x_start: f32) -> Vec<ArchParticle> {
     (0..8)
         .map(|i| {
             let color = match i {
@@ -25,27 +20,22 @@ pub fn gen_row_particles() -> Vec<ArchParticle> {
                 6 => CYAN,
                 _ => GRAY,
             };
-            let x = (LOGICAL_WINDOW_WIDTH / 2.0) + (i as f32 * 10.);
+            let x = x_start + (i as f32 * 5.);
             gen_particle(x, 0., 0., -100., color)
         })
         .collect()
 }
 
-pub fn gen_intersecting_circloid_particles() -> ArchCircloid {
-    let x = (LOGICAL_WINDOW_WIDTH / 2.0);
-    gen_circloid(x, LOGICAL_WINDOW_HEIGHT - 0.15, 0., -100., 15., WHITE)
-}
-
-pub fn gen_intersecting_particles() -> Vec<ArchParticle> {
-    let x_start = LOGICAL_WINDOW_WIDTH / 2.0 + 80.;
+// ~5 px wide
+pub fn gen_intersecting_particles(x_start: f32) -> Vec<ArchParticle> {
     vec![
-        gen_particle(x_start + 5., 0f32, 0f32, -100., RED),
-        gen_particle(x_start + 5., LOGICAL_WINDOW_HEIGHT, 0f32, 100., RED),
+        gen_particle(x_start, 0f32, 0f32, -100., WHITE),
+        gen_particle(x_start, LOGICAL_WINDOW_HEIGHT, 0f32, 100., WHITE),
     ]
 }
 
-pub fn gen_intersecting_projectiles() -> Vec<ArchProjectile> {
-    let x_start = LOGICAL_WINDOW_WIDTH / 2.0 + 100.;
+// ~ 5 px wide
+pub fn gen_intersecting_projectiles(x_start: f32) -> Vec<ArchProjectile> {
     vec![
         gen_projectile(
             x_start,
@@ -63,41 +53,41 @@ pub fn gen_intersecting_projectiles() -> Vec<ArchProjectile> {
             100.,
             time::Duration::new(100, 0),
             10,
-            GREEN,
+            RED,
         ),
     ]
 }
 
-pub fn gen_colliding_circloids() -> Vec<ArchCircloid> {
-    let x_start = LOGICAL_WINDOW_WIDTH / 2.0 + 140.;
+// ~30 px wide
+pub fn gen_colliding_circloids(x_start: f32) -> Vec<ArchCircloid> {
     vec![
-        gen_circloid(x_start, 15f32, 0f32, -100., 15., GREEN),
-        gen_circloid(x_start, LOGICAL_WINDOW_HEIGHT - 15., 0f32, 100., 15., BLUE),
+        gen_small_circloid(x_start, 10., 0f32, -100., GREEN),
+        gen_small_circloid(x_start, LOGICAL_WINDOW_HEIGHT - 10., 0f32, -100., BLUE),
     ]
 }
 
-pub fn gen_intersecting_circloid_projectile() -> (ArchProjectile, ArchCircloid) {
-    let x_start = LOGICAL_WINDOW_WIDTH / 2.0 + 180.;
+// ~30px wide
+pub fn gen_intersecting_circloid_projectile(x_start: f32) -> (ArchProjectile, ArchCircloid) {
     (
-        gen_projectile(x_start, 0f32, 0., 100., time::Duration::new(5, 0), 10, RED),
-        gen_circloid(
-            x_start,
-            LOGICAL_WINDOW_HEIGHT - 20.,
-            0f32,
-            -100.,
-            15.,
-            GREEN,
-        ),
+        gen_projectile(x_start, 0f32, 0., 100., time::Duration::new(10, 0), 10, RED),
+        gen_small_circloid(x_start, LOGICAL_WINDOW_HEIGHT - 10., 0f32, -100., YELLOW),
     )
 }
 
 pub fn spawn_scenario1(world: &mut World) {
-    world.spawn_batch(gen_row_particles());
-    world.spawn(gen_intersecting_circloid_particles());
-    world.spawn_batch(gen_intersecting_particles());
-    world.spawn_batch(gen_intersecting_projectiles());
-    world.spawn_batch(gen_colliding_circloids());
-    let (proj, circ) = gen_intersecting_circloid_projectile();
+    let x_start = LOGICAL_WINDOW_WIDTH / 2.0;
+    world.spawn_batch(gen_row_particles(x_start));
+    world.spawn(gen_small_circloid(
+        x_start + 30.,
+        LOGICAL_WINDOW_HEIGHT - 10.,
+        0.,
+        -100.,
+        ORANGE,
+    )); // intersect with particles
+    world.spawn_batch(gen_intersecting_particles(x_start + 50.));
+    world.spawn_batch(gen_intersecting_projectiles(x_start + 55.));
+    world.spawn_batch(gen_colliding_circloids(x_start + 75.));
+    let (proj, circ) = gen_intersecting_circloid_projectile(x_start + 100.);
     world.spawn(proj);
     world.spawn(circ);
 }

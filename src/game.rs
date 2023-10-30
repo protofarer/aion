@@ -113,7 +113,7 @@ impl Game {
     pub fn setup(&mut self) {
         dev!("SETUP start");
 
-        // spawn_scenario1(&mut self.world);
+        spawn_scenario1(&mut self.world);
 
         let ship = self.world.spawn(HumanShip::new());
 
@@ -121,8 +121,8 @@ impl Game {
         //     300., 300., 100., 100., 25., 200., GREEN,
         // ));
 
-        self.world
-            .spawn(gen_attached_orbiting_particle(ship, 35., 1000., GREEN));
+        // self.world
+        //     .spawn(gen_attached_orbiting_particle(ship, 35., 1000., GREEN));
 
         self.loop_controller.run();
         dev!("SETUP fin");

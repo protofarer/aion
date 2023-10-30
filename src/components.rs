@@ -263,7 +263,7 @@ pub struct ProjectileEmitterCpt {
     pub projectile_speed: f32,
     pub cooldown: i32,
     pub projectile_duration: time::Duration,
-    pub hit_damage: i32,
+    pub hit_damage: i32, // ? better as a DamageOnCollisionCpt ?
     pub is_friendly: bool,
     pub last_emission_time: time::Instant,
     pub intends_to_fire: bool,

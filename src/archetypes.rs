@@ -152,7 +152,7 @@ pub fn gen_circloid(x: f32, y: f32, vx: f32, vy: f32, r: f32, color: Color) -> A
         },
         DrawBodyCpt {
             colorbody: ColorBodyCpt {
-                primary: Color::RGB(160, 160, 0),
+                primary: color,
                 secondary: Color::RGB(0, 0, 0),
             },
             data: DrawData::R(r),
