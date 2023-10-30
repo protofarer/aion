@@ -275,7 +275,7 @@ impl ProjectileEmitterCpt {
             projectile_speed: 300.,
             cooldown: 250,
             projectile_duration: time::Duration::new(7, 0),
-            hit_damage: 10,
+            hit_damage: 50,
             is_friendly: false,
             last_emission_time: time::Instant::now(),
             intends_to_fire: true,

@@ -91,3 +91,18 @@ pub fn spawn_scenario1(world: &mut World) {
     world.spawn(proj);
     world.spawn(circ);
 }
+
+pub fn spawn_scenario2(world: &mut World) {
+    let x_start = 100.;
+    (0..10)
+        .map(|i| {
+            world.spawn(gen_small_circloid(
+                x_start + 25. * i as f32,
+                LOGICAL_WINDOW_HEIGHT / 2.,
+                0.,
+                0.,
+                ORANGE,
+            ));
+        })
+        .collect::<Vec<_>>();
+}

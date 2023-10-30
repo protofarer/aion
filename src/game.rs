@@ -18,7 +18,9 @@ use crate::avatars::{Circloid, HumanShip};
 use crate::draw::{draw_circle, draw_pixel, draw_rect};
 use crate::gui::Framework;
 use crate::pixel::*;
-use crate::scenario::{gen_intersecting_particles, gen_row_particles, spawn_scenario1};
+use crate::scenario::{
+    gen_intersecting_particles, gen_row_particles, spawn_scenario1, spawn_scenario2,
+};
 use crate::time::{Dt, FrameTimer};
 use crate::util::*;
 use crate::{dev, game, log_error, LOGICAL_WINDOW_HEIGHT, LOGICAL_WINDOW_WIDTH}; // little function in main.rs
@@ -113,9 +115,9 @@ impl Game {
     pub fn setup(&mut self) {
         dev!("SETUP start");
 
-        spawn_scenario1(&mut self.world);
-
         let ship = self.world.spawn(HumanShip::new());
+        // spawn_scenario1(&mut self.world);
+        spawn_scenario2(&mut self.world);
 
         // self.world.spawn(gen_unattached_orbiting_particle(
         //     300., 300., 100., 100., 25., 200., GREEN,
