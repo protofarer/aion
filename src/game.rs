@@ -117,7 +117,6 @@ impl Game {
         dev!("SETUP start");
 
         let ship = self.world.spawn(HumanShip::new());
-        self.world.spawn(gen_ping_animation(300, 300));
         // spawn_scenario1(&mut self.world);
         // spawn_scenario2(&mut self.world);
 
@@ -168,7 +167,8 @@ impl Game {
             draw_avatar(frame, transform, drawbody);
         }
 
-        system_render_pings(&mut self.world, &mut frame, rdt);
+        system_render_pings(&mut self.world, &mut frame);
+        system_animation_lifecycle(&mut self.world, rdt);
 
         // draw orbiting particles
         // ? refactor this?, could be done in avatar render loop?

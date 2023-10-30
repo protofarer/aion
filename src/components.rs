@@ -276,7 +276,7 @@ impl ProjectileEmitterCpt {
     pub fn new() -> Self {
         Self {
             projectile_speed: 300.,
-            cooldown: 250,
+            cooldown: 100,
             projectile_duration: time::Duration::new(7, 0),
             hit_damage: 50,
             is_friendly: false,

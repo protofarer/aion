@@ -278,8 +278,8 @@ pub fn system_boundary_restrict_particletypes(world: &mut World) {
                 transform.position.x = LOGICAL_WINDOW_WIDTH - 1.;
             }
             pings_to_spawn.push(gen_ping_animation(
-                transform.position.x as i32,
-                transform.position.y as i32,
+                transform.position.x,
+                transform.position.y,
             ));
         }
 
@@ -291,8 +291,8 @@ pub fn system_boundary_restrict_particletypes(world: &mut World) {
                 transform.position.y = LOGICAL_WINDOW_HEIGHT - 1.;
             }
             pings_to_spawn.push(gen_ping_animation(
-                transform.position.x as i32,
-                transform.position.y as i32,
+                transform.position.x,
+                transform.position.y,
             ));
         }
     }
@@ -320,8 +320,8 @@ pub fn test_system_boundary_restrict_particle(world: &mut World) {
             }
 
             pings_to_spawn.push(gen_ping_animation(
-                transform.position.x as i32,
-                transform.position.y as i32,
+                transform.position.x,
+                transform.position.y,
             ));
         }
 
@@ -335,8 +335,8 @@ pub fn test_system_boundary_restrict_particle(world: &mut World) {
             }
 
             pings_to_spawn.push(gen_ping_animation(
-                transform.position.x as i32,
-                transform.position.y as i32,
+                transform.position.x,
+                transform.position.y,
             ));
         }
     }
@@ -495,15 +495,8 @@ pub fn system_physical_damage_resolution(world: &mut World) {
     }
 }
 
-// small ping archetype
-// frame_count: 4
-// const gap_factor = [1,2,3,6];
-// 4 frames, gap factor: 1,2,3,6
-// draw_arcs(frame, 100, 100, 30, WHITE, 2);
-
 // TODO this could be a animation dispatcher, just like the render body system match block
-pub fn system_render_pings(world: &mut World, frame: &mut [u8], dt: Dt) {
-    let mut expired_anim_ents = vec![];
+pub fn system_render_pings(world: &mut World, frame: &mut [u8]) {
     for (ent, (pingdraw, colorbody, animation, transform)) in world.query_mut::<(
         &PingDrawCpt,
         &ColorBodyCpt,
@@ -520,9 +513,15 @@ pub fn system_render_pings(world: &mut World, frame: &mut [u8], dt: Dt) {
             colorbody.primary,
             pingdraw.gap_factors[current_frame],
         );
+    }
+}
 
-        // TODO independent system downstream of all render systems
-        // Animation Lifetime Mgt
+pub fn system_animation_lifecycle(world: &mut World, dt: Dt) {
+    let mut expired_anim_ents = vec![];
+
+    for (ent, (animation)) in world.query_mut::<(&mut AnimationCpt)>() {
+        let mut current_frame = animation.current_frame;
+        let frame_count = animation.frame_count;
 
         animation.rdt_accum += dt.0.as_secs_f32();
 
