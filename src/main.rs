@@ -202,7 +202,7 @@ fn main() {
         },
         move |g| {
             if g.game.get_runstate() != RunState::Stopped {
-                let _ = render_ctx.render_timer.tick();
+                let rdt = render_ctx.render_timer.tick();
 
                 ////////////////////////////////////////////////////////////////////
                 // RENDER
@@ -211,7 +211,7 @@ fn main() {
                 let mut framework = render_ctx.framework.borrow_mut();
                 let mut pixels = render_ctx.pixels.borrow_mut();
 
-                g.game.render(&mut pixels, &dbg_ctx_render.borrow());
+                g.game.render(&mut pixels, &dbg_ctx_render.borrow(), rdt);
 
                 let render_timer = &render_ctx.render_timer;
                 let update_timer2 = render_ctx.update_timer.borrow();

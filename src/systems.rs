@@ -1,6 +1,6 @@
 use std::time::{self, Duration};
 
-use crate::archetypes::{gen_projectile, ArchProjectile};
+use crate::archetypes::{gen_ping_animation, gen_projectile, ArchProjectile};
 use crate::draw::draw_arcs;
 use crate::game::{RunState, WindowDims};
 use crate::pixel::{RED, WHITE};
@@ -266,31 +266,44 @@ pub fn system_boundary_restrict_circloid(world: &mut World) {
 }
 
 pub fn system_boundary_restrict_particletypes(world: &mut World) {
+    let mut pings_to_spawn = vec![];
     for (id, (transform, rigidbody)) in
         world.query_mut::<With<(&mut TransformCpt, &mut RigidBodyCpt), &ParticleColliderCpt>>()
     {
         if transform.position.x >= LOGICAL_WINDOW_WIDTH || transform.position.x < 0f32 {
             rigidbody.velocity.x = -rigidbody.velocity.x;
-        }
-        if transform.position.x < 0f32 {
-            transform.position.x = 0f32;
-        } else if transform.position.x >= LOGICAL_WINDOW_WIDTH {
-            transform.position.x = LOGICAL_WINDOW_WIDTH - 1.;
+            if transform.position.x < 0f32 {
+                transform.position.x = 0f32;
+            } else if transform.position.x >= LOGICAL_WINDOW_WIDTH {
+                transform.position.x = LOGICAL_WINDOW_WIDTH - 1.;
+            }
+            pings_to_spawn.push(gen_ping_animation(
+                transform.position.x as i32,
+                transform.position.y as i32,
+            ));
         }
 
         if transform.position.y >= LOGICAL_WINDOW_HEIGHT || transform.position.y < 0f32 {
             rigidbody.velocity.y = -rigidbody.velocity.y;
+            if transform.position.y < 0f32 {
+                transform.position.y = 0f32;
+            } else if transform.position.y >= LOGICAL_WINDOW_HEIGHT {
+                transform.position.y = LOGICAL_WINDOW_HEIGHT - 1.;
+            }
+            pings_to_spawn.push(gen_ping_animation(
+                transform.position.x as i32,
+                transform.position.y as i32,
+            ));
         }
-        if transform.position.y < 0f32 {
-            transform.position.y = 0f32;
-        } else if transform.position.y >= LOGICAL_WINDOW_HEIGHT {
-            transform.position.y = LOGICAL_WINDOW_HEIGHT - 1.;
-        }
+    }
+    for ping in pings_to_spawn {
+        world.spawn(ping);
     }
 }
 
 // tmp for development, keep avatars in view
 pub fn test_system_boundary_restrict_particle(world: &mut World) {
+    let mut pings_to_spawn = vec![];
     for (id, (transform, rigidbody)) in
         world.query_mut::<Without<
             (&mut TransformCpt, &mut RigidBodyCpt),
@@ -299,21 +312,36 @@ pub fn test_system_boundary_restrict_particle(world: &mut World) {
     {
         if transform.position.x >= LOGICAL_WINDOW_WIDTH || transform.position.x < 0f32 {
             rigidbody.velocity.x = -rigidbody.velocity.x;
-        }
-        if transform.position.x < 0f32 {
-            transform.position.x = 0f32;
-        } else if transform.position.x >= LOGICAL_WINDOW_WIDTH {
-            transform.position.x = LOGICAL_WINDOW_WIDTH - 1.;
+
+            if transform.position.x < 0f32 {
+                transform.position.x = 0f32;
+            } else if transform.position.x >= LOGICAL_WINDOW_WIDTH {
+                transform.position.x = LOGICAL_WINDOW_WIDTH - 1.;
+            }
+
+            pings_to_spawn.push(gen_ping_animation(
+                transform.position.x as i32,
+                transform.position.y as i32,
+            ));
         }
 
         if transform.position.y >= LOGICAL_WINDOW_HEIGHT || transform.position.y < 0f32 {
             rigidbody.velocity.y = -rigidbody.velocity.y;
+
+            if transform.position.y < 0f32 {
+                transform.position.y = 0f32;
+            } else if transform.position.y >= LOGICAL_WINDOW_HEIGHT {
+                transform.position.y = LOGICAL_WINDOW_HEIGHT - 1.;
+            }
+
+            pings_to_spawn.push(gen_ping_animation(
+                transform.position.x as i32,
+                transform.position.y as i32,
+            ));
         }
-        if transform.position.y < 0f32 {
-            transform.position.y = 0f32;
-        } else if transform.position.y >= LOGICAL_WINDOW_HEIGHT {
-            transform.position.y = LOGICAL_WINDOW_HEIGHT - 1.;
-        }
+    }
+    for ping in pings_to_spawn {
+        world.spawn(ping);
     }
 }
 
@@ -473,24 +501,51 @@ pub fn system_physical_damage_resolution(world: &mut World) {
 // 4 frames, gap factor: 1,2,3,6
 // draw_arcs(frame, 100, 100, 30, WHITE, 2);
 
-type PingAnimationArchetype = (PingDrawCpt, DrawBodyCpt, AnimationCpt, TransformCpt);
-
-pub fn system_render_pings(world: &mut World, frame: &mut [u8]) {
-    for (ent, (pingdraw, drawbody, animation, transform)) in
-        world.query_mut::<(&PingDrawCpt, &DrawBodyCpt, &mut AnimationCpt, &TransformCpt)>()
-    {
+// TODO this could be a animation dispatcher, just like the render body system match block
+pub fn system_render_pings(world: &mut World, frame: &mut [u8], dt: Dt) {
+    let mut expired_anim_ents = vec![];
+    for (ent, (pingdraw, colorbody, animation, transform)) in world.query_mut::<(
+        &PingDrawCpt,
+        &ColorBodyCpt,
+        &mut AnimationCpt,
+        &TransformCpt,
+    )>() {
         let mut current_frame = animation.current_frame;
         let frame_count = animation.frame_count;
         draw_arcs(
             frame,
             transform.position.x as i32,
             transform.position.y as i32,
-            pingdraw.r as i32,
-            drawbody.colorbody.primary,
+            (pingdraw.r + pingdraw.r * (current_frame as f32 * 0.5)) as i32,
+            colorbody.primary,
             pingdraw.gap_factors[current_frame],
         );
-        current_frame = (current_frame + 1) % frame_count;
-        dev!("curr frame:{}", current_frame);
-        animation.current_frame = current_frame;
+
+        // TODO independent system downstream of all render systems
+        // Animation Lifetime Mgt
+
+        animation.rdt_accum += dt.0.as_secs_f32();
+
+        if (animation.rdt_accum >= animation.rfps) {
+            // decrement animation repeat count
+            if !animation.is_infinite_repeat {
+                if current_frame == frame_count - 1 {
+                    animation.repeat_count -= 1;
+                }
+
+                // animation exhausted
+                if animation.repeat_count <= 0 {
+                    expired_anim_ents.push(ent);
+                    continue;
+                }
+            }
+
+            // increment frame
+            animation.rdt_accum -= animation.rfps;
+            animation.current_frame = (current_frame + 1) % frame_count;
+        }
+    }
+    for expired_anim_ent in expired_anim_ents {
+        world.despawn(expired_anim_ent);
     }
 }

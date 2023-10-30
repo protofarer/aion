@@ -273,3 +273,28 @@ pub fn gen_projectile_rng_all() -> ArchProjectile {
 pub fn gen_buncha_rng_projectiles(n: i32) -> Vec<ArchProjectile> {
     (0..n).map(|_| gen_projectile_rng_all()).collect()
 }
+
+type PingAnimationArchetype = (PingDrawCpt, ColorBodyCpt, AnimationCpt, TransformCpt);
+
+pub fn gen_ping_animation(x: i32, y: i32) -> PingAnimationArchetype {
+    (
+        PingDrawCpt {
+            gap_factors: [1, 2, 3, 6],
+            r: 3.,
+        },
+        ColorBodyCpt::new(),
+        AnimationCpt {
+            frame_count: 4,
+            current_frame: 0,
+            rfps: 0.1,
+            rdt_accum: 0.,
+            repeat_count: 1,
+            is_infinite_repeat: false,
+        },
+        TransformCpt {
+            position: Vec2::new(x as f32, y as f32),
+            heading: Theta::new(),
+            scale: Vec2::new(1., 1.),
+        },
+    )
+}

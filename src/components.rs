@@ -385,12 +385,20 @@ impl HealthCpt {
 pub struct AnimationCpt {
     pub frame_count: usize,
     pub current_frame: usize,
+    pub rfps: f32,
+    pub rdt_accum: f32,
+    pub repeat_count: i32,
+    pub is_infinite_repeat: bool,
 }
 impl AnimationCpt {
     pub fn new(frame_count: usize) -> Self {
         AnimationCpt {
             frame_count,
             current_frame: 0,
+            rfps: 1.,
+            rdt_accum: 0.,
+            repeat_count: 3,
+            is_infinite_repeat: false,
         }
     }
 }

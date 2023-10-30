@@ -12,7 +12,8 @@ use winit::window::Window;
 use winit_input_helper::WinitInputHelper;
 
 use crate::archetypes::{
-    gen_attached_orbiting_particle, gen_buncha_rng_particles, gen_unattached_orbiting_particle,
+    gen_attached_orbiting_particle, gen_buncha_rng_particles, gen_ping_animation,
+    gen_unattached_orbiting_particle,
 };
 use crate::avatars::{Circloid, HumanShip};
 use crate::draw::{draw_arcs, draw_circle, draw_pixel, draw_rect};
@@ -116,15 +117,7 @@ impl Game {
         dev!("SETUP start");
 
         let ship = self.world.spawn(HumanShip::new());
-        let ping = self.world.spawn((
-            PingDrawCpt {
-                gap_factors: [1, 2, 3, 6],
-                r: 10.,
-            },
-            DrawBodyCpt::new(),
-            AnimationCpt::new(4),
-            TransformCpt::new(),
-        ));
+        self.world.spawn(gen_ping_animation(300, 300));
         // spawn_scenario1(&mut self.world);
         // spawn_scenario2(&mut self.world);
 
@@ -160,7 +153,7 @@ impl Game {
         // ai goes somewhere at the end and produces an input to be handled in next update tick
     }
 
-    pub fn render(&mut self, pixels: &mut Pixels, dbg_ctx: &DebugContext) {
+    pub fn render(&mut self, pixels: &mut Pixels, dbg_ctx: &DebugContext, rdt: Dt) {
         if (self.get_runstate() != RunState::Running) && (self.get_runstate() != RunState::Paused) {
             return;
         }
@@ -175,7 +168,7 @@ impl Game {
             draw_avatar(frame, transform, drawbody);
         }
 
-        system_render_pings(&mut self.world, &mut frame);
+        system_render_pings(&mut self.world, &mut frame, rdt);
 
         // draw orbiting particles
         // ? refactor this?, could be done in avatar render loop?
