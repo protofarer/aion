@@ -1,4 +1,4 @@
-use crate::{components::ColorBodyCpt, pixel::Color};
+use crate::{components::ColorBodyCpt, pixel::Color, util::rotate_point};
 
 use super::{LOGICAL_WINDOW_HEIGHT, LOGICAL_WINDOW_WIDTH};
 
@@ -100,4 +100,79 @@ pub fn draw_circle(frame: &mut [u8], x_center: i32, y_center: i32, radius: i32, 
             draw_pixel(frame, x_center - y, y_center + x, color);
         }
     }
+}
+
+pub fn draw_arcs(
+    frame: &mut [u8],
+    x_center: i32,
+    y_center: i32,
+    radius: i32,
+    color: Color,
+    arc_gap_factor: i32,
+) {
+    let mut x = radius;
+    let mut y = 0;
+    let mut p = 1 - radius; // The initial decision parameter
+
+    // When radius is zero, only a single point will be printed at center
+    if radius == 0 {
+        draw_pixel(frame, x_center, y_center, color);
+        return;
+    }
+
+    if radius > 0 {
+        draw_pixel(frame, x_center + radius, y_center, color);
+        draw_pixel(frame, x_center - radius, y_center, color);
+        draw_pixel(frame, x_center, y_center + radius, color);
+        draw_pixel(frame, x_center, y_center - radius, color);
+    }
+
+    // Initial point on circle at the end of radius
+    draw_pixel(frame, x_center + x, y_center - y, color);
+
+    while x > y {
+        y += 1;
+
+        // Update the decision parameter and draw the next point
+        if p <= 0 {
+            p += 2 * y + 1;
+        } else {
+            x -= 1;
+            p += 2 * (y - x) + 1;
+        }
+
+        if x < arc_gap_factor * y {
+            break;
+        }
+
+        // Symmetrical points in other octants
+        draw_pixel(frame, x_center + x, y_center - y, color);
+        draw_pixel(frame, x_center - x, y_center - y, color);
+        draw_pixel(frame, x_center + x, y_center + y, color);
+        draw_pixel(frame, x_center - x, y_center + y, color);
+
+        if x != y {
+            draw_pixel(frame, x_center + y, y_center - x, color);
+            draw_pixel(frame, x_center - y, y_center - x, color);
+            draw_pixel(frame, x_center + y, y_center + x, color);
+            draw_pixel(frame, x_center - y, y_center + x, color);
+        }
+    }
+}
+
+fn cast_and_rotate_point(
+    x: i32,
+    y: i32,
+    rotation: f32,
+    x_center: i32,
+    y_center: i32,
+) -> (i32, i32) {
+    let (x_out, y_out) = rotate_point(
+        x as f32,
+        y as f32,
+        rotation,
+        x_center as f32,
+        y_center as f32,
+    );
+    (x_out as i32, y_out as i32)
 }

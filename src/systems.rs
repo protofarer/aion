@@ -1,6 +1,7 @@
 use std::time::{self, Duration};
 
 use crate::archetypes::{gen_projectile, ArchProjectile};
+use crate::draw::draw_arcs;
 use crate::game::{RunState, WindowDims};
 use crate::pixel::{RED, WHITE};
 use crate::time::Dt;
@@ -463,5 +464,33 @@ pub fn system_physical_damage_resolution(world: &mut World) {
 
     for killed_body in killed_bodies {
         world.despawn(killed_body);
+    }
+}
+
+// small ping archetype
+// frame_count: 4
+// const gap_factor = [1,2,3,6];
+// 4 frames, gap factor: 1,2,3,6
+// draw_arcs(frame, 100, 100, 30, WHITE, 2);
+
+type PingAnimationArchetype = (PingDrawCpt, DrawBodyCpt, AnimationCpt, TransformCpt);
+
+pub fn system_render_pings(world: &mut World, frame: &mut [u8]) {
+    for (ent, (pingdraw, drawbody, animation, transform)) in
+        world.query_mut::<(&PingDrawCpt, &DrawBodyCpt, &mut AnimationCpt, &TransformCpt)>()
+    {
+        let mut current_frame = animation.current_frame;
+        let frame_count = animation.frame_count;
+        draw_arcs(
+            frame,
+            transform.position.x as i32,
+            transform.position.y as i32,
+            pingdraw.r as i32,
+            drawbody.colorbody.primary,
+            pingdraw.gap_factors[current_frame],
+        );
+        current_frame = (current_frame + 1) % frame_count;
+        dev!("curr frame:{}", current_frame);
+        animation.current_frame = current_frame;
     }
 }

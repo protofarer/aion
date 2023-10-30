@@ -1,4 +1,7 @@
-use crate::pixel::{Color, BLUE, CYAN, GREEN, GREY, MAGENTA, ORANGE, RED, WHITE, YELLOW};
+use crate::{
+    pixel::{Color, BLUE, CYAN, GREEN, GREY, MAGENTA, ORANGE, RED, WHITE, YELLOW},
+    LOGICAL_WINDOW_HEIGHT, LOGICAL_WINDOW_WIDTH,
+};
 use hecs::Entity;
 use nalgebra_glm::Vec2;
 use std::{default, time};
@@ -12,7 +15,7 @@ pub struct TransformCpt {
 impl TransformCpt {
     pub fn new() -> Self {
         Self {
-            position: Vec2::new(100., 100.),
+            position: Vec2::new(LOGICAL_WINDOW_WIDTH / 2., LOGICAL_WINDOW_HEIGHT / 2.),
             heading: Theta::new(),
             scale: Vec2::new(1., 1.),
         }
@@ -377,4 +380,22 @@ impl HealthCpt {
     pub fn new() -> Self {
         HealthCpt { hp: 100 }
     }
+}
+
+pub struct AnimationCpt {
+    pub frame_count: usize,
+    pub current_frame: usize,
+}
+impl AnimationCpt {
+    pub fn new(frame_count: usize) -> Self {
+        AnimationCpt {
+            frame_count,
+            current_frame: 0,
+        }
+    }
+}
+
+pub struct PingDrawCpt {
+    pub gap_factors: [i32; 4],
+    pub r: f32,
 }
