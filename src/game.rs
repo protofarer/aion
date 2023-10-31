@@ -19,13 +19,13 @@ use crate::archetypes::{
     gen_attached_orbiting_particle, gen_buncha_rng_particles, gen_ping_animation,
     gen_unattached_orbiting_particle,
 };
-use crate::audio::SoundManager;
+use crate::audio::{SoundEffectName, SoundManager};
 use crate::avatars::{Circloid, HumanShip};
 use crate::draw::{draw_arcs, draw_circle, draw_pixel, draw_rect};
 use crate::gui::Framework;
 use crate::pixel::*;
 use crate::scenario::{
-    gen_intersecting_particles, gen_row_particles, spawn_scenario1, spawn_scenario2,
+    gen_intersecting_particles, gen_row_particles, spawn_scenario1, spawn_scenario_shootingallery,
 };
 use crate::time::{Dt, FrameTimer};
 use crate::util::*;
@@ -122,16 +122,17 @@ impl Game {
         dev!("SETUP start");
 
         self.sound_manager
-            .load_source("assets/longsound".to_owned(), "longsound.wav")?;
+            .load_source(SoundEffectName::TinyShot, "assets/tiny_shot.wav")?;
         self.sound_manager
-            .load_source("assets/longexplode".to_owned(), "longexplosion.wav")?;
-
-        self.sound_manager.play("longsound");
-        self.sound_manager.play("longexplode");
+            .load_source(SoundEffectName::Scratch, "assets/scratch.wav")?;
+        self.sound_manager
+            .load_source(SoundEffectName::PhysicalDeath, "assets/physical_death.wav")?;
+        self.sound_manager
+            .load_source(SoundEffectName::PhysicalHarm, "assets/physical_harm.wav")?;
 
         let ship = self.world.spawn(HumanShip::new());
         // spawn_scenario1(&mut self.world);
-        // spawn_scenario2(&mut self.world);
+        spawn_scenario_shootingallery(&mut self.world);
 
         // self.world.spawn(gen_unattached_orbiting_particle(
         //     300., 300., 100., 100., 25., 200., GREEN,

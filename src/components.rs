@@ -1,4 +1,5 @@
 use crate::{
+    audio::SoundEffectName,
     pixel::{Color, BLUE, CYAN, GREEN, GREY, MAGENTA, ORANGE, RED, WHITE, YELLOW},
     LOGICAL_WINDOW_HEIGHT, LOGICAL_WINDOW_WIDTH,
 };
@@ -406,4 +407,8 @@ impl AnimationCpt {
 pub struct PingDrawCpt {
     pub gap_factors: [i32; 4],
     pub r: f32,
+}
+
+pub struct SoundEffectEvent {
+    pub name: SoundEffectName, // the const
 }

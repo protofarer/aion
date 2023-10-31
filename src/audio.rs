@@ -5,11 +5,21 @@ use rodio::{
     OutputStreamHandle, Source,
 };
 
+#[derive(Eq, PartialEq, Hash)]
+pub enum SoundEffectName {
+    TinyShot,
+    LightShot,
+    MedShot,
+    Scratch,
+    PhysicalDeath,
+    PhysicalHarm,
+}
+
 type BufferedFile = Buffered<Decoder<BufReader<File>>>;
 pub struct SoundManager {
     _stream: OutputStream,
     stream_handle: OutputStreamHandle,
-    sources: HashMap<String, BufferedFile>,
+    sources: HashMap<SoundEffectName, BufferedFile>,
 }
 
 impl SoundManager {
@@ -32,11 +42,15 @@ impl SoundManager {
         })
     }
 
-    pub fn load_source(&mut self, name: String, file_path: &str) -> Result<(), anyhow::Error> {
+    pub fn load_source(
+        &mut self,
+        name: SoundEffectName,
+        file_path: &str,
+    ) -> Result<(), anyhow::Error> {
         self.sources.insert(
             name,
             Decoder::new(BufReader::new(
-                File::open(file_path).expect("File not found."),
+                File::open(file_path).expect("Audio file not found."),
             ))
             .expect("Couldn't load source.")
             .buffered(),
@@ -44,9 +58,9 @@ impl SoundManager {
         Ok(())
     }
 
-    pub fn play(&self, name: &str) {
+    pub fn play(&self, name: &SoundEffectName) {
         self.sources.get(name).map_or_else(
-            || Err(eprintln!("Audio source not found for name: {}", name)),
+            || Err(eprintln!("Audio source not found for name.")),
             |src| {
                 let src = src.clone();
                 self.stream_handle.play_raw(src.convert_samples());

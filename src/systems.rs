@@ -1,7 +1,7 @@
 use std::time::{self, Duration};
 
 use crate::archetypes::{gen_ping_animation, gen_projectile, ArchProjectile};
-use crate::audio::SoundManager;
+use crate::audio::{SoundEffectName, SoundManager};
 use crate::draw::draw_arcs;
 use crate::game::{RunState, WindowDims};
 use crate::pixel::{RED, WHITE};
@@ -124,11 +124,12 @@ fn set_rotational_input_component_by_human(
     }
 }
 ////////////////////////////////////////////////////////////////////////////////
-// Projectile Creation
+// Projectile Emissions
 ////////////////////////////////////////////////////////////////////////////////
 
 pub fn system_projectile_emission(world: &mut World) {
     let mut projectiles_to_spawn: Vec<ArchProjectile> = vec![];
+    let mut sound_effects: Vec<SoundEffectEvent> = vec![];
     for (ent, (tx, pe, cc)) in
         world.query_mut::<(&TransformCpt, &mut ProjectileEmitterCpt, &CircleColliderCpt)>()
     {
@@ -145,11 +146,17 @@ pub fn system_projectile_emission(world: &mut World) {
                 let projectile =
                     gen_projectile(x, y, vx, vy, time::Duration::new(3, 0), pe.hit_damage, RED);
                 projectiles_to_spawn.push(projectile);
+                sound_effects.push(SoundEffectEvent {
+                    name: SoundEffectName::TinyShot,
+                });
             }
         }
     }
     for projectile in projectiles_to_spawn {
         world.spawn(projectile);
+    }
+    for x in sound_effects {
+        world.spawn((x,));
     }
 }
 
@@ -475,12 +482,17 @@ pub fn system_physical_damage_resolution(world: &mut World) {
         .map(|(e, (ev))| (e, ev.receiver, ev.damage))
         .collect();
 
+    let mut sound_effects_to_play: Vec<(SoundEffectEvent)> = vec![];
+
     let mut killed_bodies: Vec<Entity> = vec![];
     for (ent, receiver, dmg) in apply_damage.iter() {
         // * query_one, not query_one_mut nor get
         let mut query = world.query_one::<&mut HealthCpt>(*receiver).unwrap();
         let health = query.get().unwrap();
         health.hp -= dmg;
+        sound_effects_to_play.push(SoundEffectEvent {
+            name: SoundEffectName::Scratch,
+        });
         if health.hp <= 0 {
             killed_bodies.push(*receiver);
         }
@@ -493,6 +505,10 @@ pub fn system_physical_damage_resolution(world: &mut World) {
 
     for killed_body in killed_bodies {
         world.despawn(killed_body);
+    }
+
+    for sound_effect in sound_effects_to_play {
+        world.spawn((sound_effect,));
     }
 }
 
@@ -552,4 +568,12 @@ pub fn system_animation_lifecycle(world: &mut World, dt: Dt) {
 
 pub fn system_sound_effects(world: &mut World, sm: &SoundManager) {
     // todo query, play, cleanup sound events
+    let mut sound_events_to_despawn = vec![];
+    for (ent, (sfx)) in world.query_mut::<(&SoundEffectEvent)>() {
+        sm.play(&sfx.name);
+        sound_events_to_despawn.push(ent);
+    }
+    for x in sound_events_to_despawn {
+        world.despawn(x);
+    }
 }

@@ -92,7 +92,7 @@ pub fn spawn_scenario1(world: &mut World) {
     world.spawn(circ);
 }
 
-pub fn spawn_scenario2(world: &mut World) {
+pub fn spawn_scenario_shootingallery(world: &mut World) {
     let x_start = 100.;
     (0..10)
         .map(|i| {
