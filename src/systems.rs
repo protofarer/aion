@@ -1,6 +1,7 @@
 use std::time::{self, Duration};
 
 use crate::archetypes::{gen_ping_animation, gen_projectile, ArchProjectile};
+use crate::audio::SoundManager;
 use crate::draw::draw_arcs;
 use crate::game::{RunState, WindowDims};
 use crate::pixel::{RED, WHITE};
@@ -547,4 +548,8 @@ pub fn system_animation_lifecycle(world: &mut World, dt: Dt) {
     for expired_anim_ent in expired_anim_ents {
         world.despawn(expired_anim_ent);
     }
+}
+
+pub fn system_sound_effects(world: &mut World, sm: &SoundManager) {
+    // todo query, play, cleanup sound events
 }

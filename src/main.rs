@@ -1,5 +1,6 @@
 #![allow(unused)]
 mod archetypes;
+mod audio;
 mod avatars;
 mod components;
 mod draw;

@@ -1,9 +1,13 @@
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context, Result};
 use hecs::{PreparedQuery, With, Without, World};
 use log::info;
 use rand::prelude::*;
+use rodio::cpal::traits::HostTrait;
+use rodio::{Decoder, DeviceTrait, OutputStream, OutputStreamHandle, Source};
 #[allow(warnings)]
 use std::collections::HashMap;
+use std::fs::File;
+use std::io::BufReader;
 use std::time::{self, Duration, Instant};
 
 use winit::event::{Event, VirtualKeyCode};
@@ -15,6 +19,7 @@ use crate::archetypes::{
     gen_attached_orbiting_particle, gen_buncha_rng_particles, gen_ping_animation,
     gen_unattached_orbiting_particle,
 };
+use crate::audio::SoundManager;
 use crate::avatars::{Circloid, HumanShip};
 use crate::draw::{draw_arcs, draw_circle, draw_pixel, draw_rect};
 use crate::gui::Framework;
@@ -89,6 +94,7 @@ pub struct Game {
     pub loop_controller: RunController,
     pub input: WinitInputHelper,
     pub world: World,
+    pub sound_manager: SoundManager,
 }
 
 impl GetRunState for Game {
@@ -101,20 +107,27 @@ impl Game {
     pub fn new() -> Result<Self, anyhow::Error> {
         dev!("INIT start");
 
-        let loop_controller = RunController::new();
-        let mut world = World::new();
-
+        let mut sound_manager = SoundManager::new().map_err(|e| anyhow!("{}", e))?;
         dev!("INIT fin");
 
         Ok(Self {
-            loop_controller,
+            loop_controller: RunController::new(),
             input: WinitInputHelper::new(),
-            world,
+            world: World::new(),
+            sound_manager,
         })
     }
 
-    pub fn setup(&mut self) {
+    pub fn setup(&mut self) -> Result<(), anyhow::Error> {
         dev!("SETUP start");
+
+        self.sound_manager
+            .load_source("assets/longsound".to_owned(), "longsound.wav")?;
+        self.sound_manager
+            .load_source("assets/longexplode".to_owned(), "longexplosion.wav")?;
+
+        self.sound_manager.play("longsound");
+        self.sound_manager.play("longexplode");
 
         let ship = self.world.spawn(HumanShip::new());
         // spawn_scenario1(&mut self.world);
@@ -129,6 +142,7 @@ impl Game {
 
         self.loop_controller.run();
         dev!("SETUP fin");
+        Ok(())
     }
 
     pub fn update(&mut self, dt: Dt) {
@@ -149,6 +163,7 @@ impl Game {
         system_collision_detection(&mut self.world);
         system_collision_resolution(&mut self.world);
         system_physical_damage_resolution(&mut self.world);
+        system_sound_effects(&mut self.world, &self.sound_manager);
         // ai goes somewhere at the end and produces an input to be handled in next update tick
     }
 
