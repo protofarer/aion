@@ -1,0 +1,47 @@
+Date : 2023-10-31 16:33:06
+Directory : /home/kenny/projects/aion
+Total : 19 files,  5164 codes, 368 comments, 635 blanks, all 6167 lines
+
+Languages
++----------+------------+------------+------------+------------+------------+
+| language | files      | code       | comment    | blank      | total      |
++----------+------------+------------+------------+------------+------------+
+| Rust     |         17 |      2,649 |        365 |        341 |      3,355 |
+| TOML     |          2 |      2,515 |          3 |        294 |      2,812 |
++----------+------------+------------+------------+------------+------------+
+
+Directories
++----------------------------------------------+------------+------------+------------+------------+------------+
+| path                                         | files      | code       | comment    | blank      | total      |
++----------------------------------------------+------------+------------+------------+------------+------------+
+| .                                            |         19 |      5,164 |        368 |        635 |      6,167 |
+| . (Files)                                    |          2 |      2,515 |          3 |        294 |      2,812 |
+| archive                                      |          1 |          0 |        129 |         16 |        145 |
+| src                                          |         16 |      2,649 |        236 |        325 |      3,210 |
++----------------------------------------------+------------+------------+------------+------------+------------+
+
+Files
++----------------------------------------------+----------+------------+------------+------------+------------+
+| filename                                     | language | code       | comment    | blank      | total      |
++----------------------------------------------+----------+------------+------------+------------+------------+
+| /home/kenny/projects/aion/Cargo.lock         | TOML     |      2,488 |          2 |        290 |      2,780 |
+| /home/kenny/projects/aion/Cargo.toml         | TOML     |         27 |          1 |          4 |         32 |
+| /home/kenny/projects/aion/archive/code.rs    | Rust     |          0 |        129 |         16 |        145 |
+| /home/kenny/projects/aion/src/archetypes.rs  | Rust     |        261 |         17 |         23 |        301 |
+| /home/kenny/projects/aion/src/audio.rs       | Rust     |         93 |          1 |         14 |        108 |
+| /home/kenny/projects/aion/src/avatars.rs     | Rust     |        111 |          4 |          8 |        123 |
+| /home/kenny/projects/aion/src/components.rs  | Rust     |        382 |          1 |         32 |        415 |
+| /home/kenny/projects/aion/src/draw.rs        | Rust     |        142 |          9 |         28 |        179 |
+| /home/kenny/projects/aion/src/draw_bodies.rs | Rust     |        165 |         14 |         17 |        196 |
+| /home/kenny/projects/aion/src/game.rs        | Rust     |        167 |         41 |         31 |        239 |
+| /home/kenny/projects/aion/src/gui.rs         | Rust     |        254 |         25 |         30 |        309 |
+| /home/kenny/projects/aion/src/init.rs        | Rust     |         44 |          0 |          8 |         52 |
+| /home/kenny/projects/aion/src/logging.rs     | Rust     |         14 |          0 |          2 |         16 |
+| /home/kenny/projects/aion/src/main.rs        | Rust     |        211 |         40 |         43 |        294 |
+| /home/kenny/projects/aion/src/pixel.rs       | Rust     |        151 |          7 |         16 |        174 |
+| /home/kenny/projects/aion/src/scenario.rs    | Rust     |         95 |          5 |          9 |        109 |
+| /home/kenny/projects/aion/src/systems.rs     | Rust     |        453 |         72 |         55 |        580 |
+| /home/kenny/projects/aion/src/time.rs        | Rust     |         99 |          0 |          8 |        107 |
+| /home/kenny/projects/aion/src/util.rs        | Rust     |          7 |          0 |          1 |          8 |
+| Total                                        |          |      5,164 |        368 |        635 |      6,167 |
++----------------------------------------------+----------+------------+------------+------------+------------+

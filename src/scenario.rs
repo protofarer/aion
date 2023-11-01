@@ -94,15 +94,13 @@ pub fn spawn_scenario1(world: &mut World) {
 
 pub fn spawn_scenario_shootingallery(world: &mut World) {
     let x_start = 100.;
-    (0..10)
-        .map(|i| {
-            world.spawn(gen_small_circloid(
-                x_start + 25. * i as f32,
-                LOGICAL_WINDOW_HEIGHT / 2.,
-                0.,
-                0.,
-                ORANGE,
-            ));
-        })
-        .collect::<Vec<_>>();
+    (0..10).for_each(|i| {
+        world.spawn(gen_small_circloid(
+            x_start + 25. * i as f32,
+            LOGICAL_WINDOW_HEIGHT / 2.,
+            0.,
+            0.,
+            ORANGE,
+        ));
+    });
 }

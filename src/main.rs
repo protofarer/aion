@@ -9,6 +9,7 @@ mod game;
 mod gui;
 mod init;
 mod logging;
+mod monitor;
 mod pixel;
 mod scenario;
 mod systems;
@@ -16,15 +17,6 @@ mod time;
 mod util;
 
 extern crate procfs;
-/// Resident Set Size: number of pages the process has in real memory.
-///
-/// This is just the pages which count toward text,  data,  or stack space.
-/// This does not include pages which have not been demand-loaded in, or which are swapped out.
-fn get_process_memory() -> Option<u64> {
-    let me = procfs::process::Process::myself().ok()?;
-    let stat = me.stat().ok()?;
-    Some(stat.rss_bytes())
-}
 
 use std::{
     cell::{RefCell, RefMut},
@@ -35,6 +27,7 @@ use std::{
 };
 
 use gui::Framework;
+use monitor::get_process_memory;
 use pixel::{Color, BLACK};
 use pixels::{Error, Pixels, SurfaceTexture};
 use winit::{
@@ -53,29 +46,6 @@ use time::FrameTimer;
 use game::Game;
 use game::{GetRunState, RunState};
 use game_loop::game_loop;
-
-// fn process_dbg_keys(&mut self, dbg_ctx: &mut DebugContext) {
-//     if self.input.key_pressed(VirtualKeyCode::P) {
-//         if self.get_runstate() == RunState::Running {
-//             self.loop_controller.pause();
-//         } else if self.get_runstate() == RunState::Paused {
-//             self.loop_controller.run();
-//         }
-//     }
-//     if self.input.key_pressed(VirtualKeyCode::Semicolon) {
-//         if self.get_runstate() == RunState::Stopped {
-//             self.loop_controller.run();
-//         } else if self.get_runstate() != RunState::Stopped {
-//             self.loop_controller.stop();
-//         }
-//     }
-//     if self.input.key_pressed(VirtualKeyCode::Grave) {
-//         dbg_ctx.is_on = !dbg_ctx.is_on;
-//     }
-//     if self.input.key_pressed(VirtualKeyCode::Key1) {
-//         dbg_ctx.is_drawing_collisionareas = !dbg_ctx.is_drawing_collisionareas;
-//     }
-// }
 
 fn process_dbg_keys(game: &mut Game, dbg_ctx: &mut DebugContext) {
     if game.input.key_pressed(VirtualKeyCode::P) {
@@ -121,11 +91,11 @@ struct InputContext {
     framework: Rc<RefCell<Framework>>,
 }
 
-const TITLE: &'static str = "Aion";
 pub static LOGICAL_WINDOW_WIDTH: f32 = 960.;
 pub static LOGICAL_WINDOW_HEIGHT: f32 = 540.;
 pub static PHYSICAL_WINDOW_WIDTH: f32 = 1920.;
 pub static PHYSICAL_WINDOW_HEIGHT: f32 = 1080.;
+const TITLE: &'static str = "Aion";
 const UPDATES_PER_SECOND: u32 = 60;
 const MAX_FRAME_TIME: f64 = 0.1;
 
@@ -180,6 +150,8 @@ fn main() {
     let dbg_ctx_input = Rc::clone(&dbg_ctx);
     let dbg_ctx_gui = Rc::clone(&dbg_ctx);
 
+    let mut memstat: Option<u64> = None;
+
     let mut game = Game::new().unwrap_or_else(|e| {
         println!("{e}");
         std::process::exit(1);
@@ -187,7 +159,6 @@ fn main() {
 
     game.setup();
 
-    let mut memstat: Option<u64> = None;
     game_loop(
         event_loop,
         window,
@@ -208,7 +179,7 @@ fn main() {
                 ////////////////////////////////////////////////////////////////////
                 // RENDER
                 ////////////////////////////////////////////////////////////////////
-                ///
+
                 let mut framework = render_ctx.framework.borrow_mut();
                 let mut pixels = render_ctx.pixels.borrow_mut();
 
@@ -237,9 +208,7 @@ fn main() {
                 let render_result = pixels.render_with(|encoder, render_target, context| {
                     // Render the world texture
                     context.scaling_renderer.render(encoder, render_target);
-
                     framework.render(encoder, render_target, context); // Render egui
-
                     Ok(())
                 });
 

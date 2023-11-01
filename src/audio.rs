@@ -13,6 +13,7 @@ pub enum SoundEffectName {
     Scratch,
     PhysicalDeath,
     PhysicalHarm,
+    PlayerPhysicalDeath,
 }
 
 type BufferedFile = Buffered<Decoder<BufReader<File>>>;

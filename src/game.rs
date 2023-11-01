@@ -129,6 +129,10 @@ impl Game {
             .load_source(SoundEffectName::PhysicalDeath, "assets/physical_death.wav")?;
         self.sound_manager
             .load_source(SoundEffectName::PhysicalHarm, "assets/physical_harm.wav")?;
+        self.sound_manager.load_source(
+            SoundEffectName::PlayerPhysicalDeath,
+            "assets/player_physical_death.wav",
+        )?;
 
         let ship = self.world.spawn(HumanShip::new());
         // spawn_scenario1(&mut self.world);

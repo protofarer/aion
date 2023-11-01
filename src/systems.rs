@@ -504,6 +504,15 @@ pub fn system_physical_damage_resolution(world: &mut World) {
     }
 
     for killed_body in killed_bodies {
+        if world.get::<(&HumanInputCpt)>(killed_body).is_ok() {
+            sound_effects_to_play.push(SoundEffectEvent {
+                name: SoundEffectName::PlayerPhysicalDeath,
+            });
+        } else {
+            sound_effects_to_play.push(SoundEffectEvent {
+                name: SoundEffectName::PhysicalDeath,
+            });
+        }
         world.despawn(killed_body);
     }
 
