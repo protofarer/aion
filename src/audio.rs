@@ -4,11 +4,21 @@ use rodio::{
     cpal::traits::HostTrait, source::Buffered, Decoder, DeviceTrait, OutputStream,
     OutputStreamHandle, Source,
 };
+use sfxr::WaveType;
 
 #[derive(Clone, Copy)]
 pub struct SfxrBuffer {
     buffer: [f32; 44_100],
     index: usize,
+}
+
+impl SfxrBuffer {
+    pub fn new() -> Self {
+        Self {
+            buffer: [0.; 44_100],
+            index: 0,
+        }
+    }
 }
 
 impl Iterator for SfxrBuffer {
@@ -44,6 +54,7 @@ impl Source for SfxrBuffer {
 
 #[derive(Eq, PartialEq, Hash)]
 pub enum SoundEffectName {
+    DefaultLaser,
     TinyShot,
     LightShot,
     MedShot,
@@ -60,10 +71,12 @@ pub enum SoundSource {
     BufferedFile(BufferedFile),
     SfxrBuffer(SfxrBuffer),
 }
+
+type HashMapSoundEffects = HashMap<SoundEffectName, SoundSource>;
 pub struct SoundManager {
     _stream: OutputStream,
     stream_handle: OutputStreamHandle,
-    sources: HashMap<SoundEffectName, SoundSource>,
+    sources: HashMapSoundEffects,
 }
 
 impl SoundManager {
@@ -78,12 +91,30 @@ impl SoundManager {
             .expect("Failed to find audio output device");
 
         let (_stream, stream_handle) = OutputStream::try_from_device(&device).unwrap();
+        let sources = match SoundManager::load_core_sound_effects() {
+            Ok(sources) => sources,
+            Err(e) => return Err(anyhow::anyhow!("Failed to load core sound effects")),
+        };
 
         Ok(Self {
             _stream,
             stream_handle,
-            sources: HashMap::new(),
+            sources,
         })
+    }
+
+    fn load_core_sound_effects() -> Result<HashMapSoundEffects, anyhow::Error> {
+        let mut sources: HashMapSoundEffects = HashMap::new();
+
+        let sample = AionLaser::default();
+        let mut generator = sfxr::Generator::new(sample);
+        let mut source = SoundSource::SfxrBuffer(SfxrBuffer::new());
+        if let SoundSource::SfxrBuffer(sfxr_buffer) = &mut source {
+            generator.generate(&mut sfxr_buffer.buffer);
+        }
+
+        sources.insert(SoundEffectName::DefaultLaser, source);
+        Ok(sources)
     }
 
     pub fn load_source(
@@ -110,10 +141,7 @@ impl SoundManager {
         let mut generator = sfxr::Generator::new(sample);
 
         // I need to feed params into a `sfxr::Sample::... to get... a buffer?`
-        let mut source = SoundSource::SfxrBuffer(SfxrBuffer {
-            buffer: [0.; 44_100],
-            index: 0,
-        });
+        let mut source = SoundSource::SfxrBuffer(SfxrBuffer::new());
 
         if let SoundSource::SfxrBuffer(sfxr_buffer) = &mut source {
             generator.generate(&mut sfxr_buffer.buffer);
@@ -184,8 +212,51 @@ impl SoundManager {
     }
 }
 
-// type AionProjectileEmissionSample = sfxr::Sample;
 // can be any sfxr sample archetype..corresponding to appropriate aion projectile: particle/energy/laser cannon/technical/matter
+// TODO builder pattern
+struct AionLaser;
+impl AionLaser {
+    pub fn new(
+        wave_type: WaveType,
+        base_freq: f64,
+        freq_limit: f64,
+        freq_ramp: f64,
+    ) -> Result<sfxr::Sample, &'static str> {
+        if !base_freq.validate(0.1, 1.) {
+            return Err("base_freq must be between 0.1 and 1.0");
+        }
+        if !freq_limit.validate(0., 1.) {
+            return Err("freq_limit must be between 0.0 and 1.0");
+        }
+        if !freq_ramp.validate(-1., -0.01) {
+            return Err("freq_ramp must be between -1.0 and -0.01");
+        }
+        let mut s = sfxr::Sample::new();
+        s.wave_type = wave_type;
+        s.base_freq = base_freq;
+        s.freq_limit = freq_limit;
+        s.freq_ramp = freq_ramp;
+        Ok(s)
+    }
+    pub fn default() -> sfxr::Sample {
+        let mut s = sfxr::Sample::new();
+        s.wave_type = sfxr::WaveType::Triangle;
+        s.base_freq = 0.5;
+        s.freq_limit = 0.15;
+        s.freq_ramp = -0.025;
+        s
+    }
+}
+
+pub trait ValidRange {
+    fn validate(&self, min: Self, max: Self) -> bool;
+}
+
+impl ValidRange for f64 {
+    fn validate(&self, min: Self, max: Self) -> bool {
+        *self >= min && *self <= max
+    }
+}
 
 // wave_type: WaveType::Square,
 // base_freq: 0.3,
