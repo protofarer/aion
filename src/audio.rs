@@ -1,5 +1,6 @@
 use std::{collections::HashMap, fs::File, io::BufReader};
 
+use egui_wgpu::wgpu::Device;
 use rodio::{
     cpal::traits::HostTrait, source::Buffered, Decoder, DeviceTrait, OutputStream,
     OutputStreamHandle, Source,
@@ -8,14 +9,16 @@ use sfxr::WaveType;
 
 #[derive(Clone, Copy)]
 pub struct SfxrBuffer {
-    buffer: [f32; 44_100],
+    // buffer: [f32; 44_100],
+    buffer: [f32; 22050], // ? set buffer size precisely using binary search after buffer is mutated by sfxr generator
     index: usize,
 }
 
 impl SfxrBuffer {
     pub fn new() -> Self {
         Self {
-            buffer: [0.; 44_100],
+            // buffer: [0.; 44_100],
+            buffer: [0.; 22050],
             index: 0,
         }
     }
@@ -52,7 +55,7 @@ impl Source for SfxrBuffer {
     }
 }
 
-#[derive(Eq, PartialEq, Hash)]
+#[derive(Copy, Clone, Eq, PartialEq, Hash)]
 pub enum SoundEffectName {
     DefaultLaser,
     TinyShot,
@@ -81,7 +84,9 @@ pub struct SoundManager {
 
 impl SoundManager {
     pub fn new() -> Result<Self, anyhow::Error> {
-        let device_name = "hdmi:CARD=HDMI,DEV=2";
+        // let device_name = "hdmi:CARD=HDMI,DEV=2";
+        // let device_name = "front:CARD=Generic,DEV=0";
+        let device_name = "sysdefault:CARD=Generic";
 
         let host = rodio::cpal::default_host();
         let device = host
@@ -107,17 +112,32 @@ impl SoundManager {
         let mut sources: HashMapSoundEffects = HashMap::new();
 
         let sample = AionLaser::default();
+
         let mut generator = sfxr::Generator::new(sample);
         let mut source = SoundSource::SfxrBuffer(SfxrBuffer::new());
         if let SoundSource::SfxrBuffer(sfxr_buffer) = &mut source {
             generator.generate(&mut sfxr_buffer.buffer);
         }
 
+        println!("in load core sfx",);
+        if let SoundSource::SfxrBuffer(source) = &mut source {
+            if !source.buffer.iter().all(|&sample| sample != 0.0) {
+                println!("buffer not filled completely",);
+            }
+        }
+
+        // let mut buffer_size = 44100;
+        // while {
+        // } {
+        // }
+
         sources.insert(SoundEffectName::DefaultLaser, source);
+
+        // TODO add energy particle
         Ok(sources)
     }
 
-    pub fn load_source(
+    pub fn load_source_from_file(
         &mut self,
         name: SoundEffectName,
         file_path: &str,
@@ -155,8 +175,8 @@ impl SoundManager {
     //     // TODO clamp/bound params or resulting sample to ensure "reasonableness": volume range, distortion, length, etc...
     // }
 
-    pub fn play(&self, name: &SoundEffectName) {
-        self.sources.get(name).map_or_else(
+    pub fn play(&self, name: SoundEffectName) {
+        self.sources.get(&name).map_or_else(
             || Err(eprintln!("Audio source not found for name.")),
             |sound_source| {
                 match sound_source {
@@ -231,20 +251,36 @@ impl AionLaser {
         if !freq_ramp.validate(-1., -0.01) {
             return Err("freq_ramp must be between -1.0 and -0.01");
         }
-        let mut s = sfxr::Sample::new();
+        // let mut s = sfxr::Sample::new();
+
+        let mut s = Self::default();
+
+        // set specifiables
         s.wave_type = wave_type;
         s.base_freq = base_freq;
         s.freq_limit = freq_limit;
         s.freq_ramp = freq_ramp;
+
         Ok(s)
     }
     pub fn default() -> sfxr::Sample {
         let mut s = sfxr::Sample::new();
         s.wave_type = sfxr::WaveType::Triangle;
-        s.base_freq = 0.5;
-        s.freq_limit = 0.15;
-        s.freq_ramp = -0.025;
-        s
+        s.base_freq = 0.9;
+        s.freq_limit = 0.2;
+        s.freq_ramp = -0.005;
+
+        // set sample defaults
+        // mid means middle value wrt sfxr example rng ranges
+        s.env_attack = 0.;
+        s.env_sustain = 1.; // mid
+        s.env_decay = 0.2; // mid
+
+        // s.duty = 0.;
+        // s.duty_ramp = 0.;
+
+        // s
+        sfxr::Sample::laser(None)
     }
 }
 

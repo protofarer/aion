@@ -122,17 +122,19 @@ impl Game {
         dev!("SETUP start");
 
         self.sound_manager
-            .load_source(SoundEffectName::TinyShot, "assets/tiny_shot.wav")?;
+            .load_source_from_file(SoundEffectName::TinyShot, "assets/tiny_shot.wav")?;
         self.sound_manager
-            .load_source(SoundEffectName::Scratch, "assets/scratch.wav")?;
+            .load_source_from_file(SoundEffectName::Scratch, "assets/scratch.wav")?;
         self.sound_manager
-            .load_source(SoundEffectName::PhysicalDeath, "assets/physical_death.wav")?;
+            .load_source_from_file(SoundEffectName::PhysicalDeath, "assets/physical_death.wav")?;
         self.sound_manager
-            .load_source(SoundEffectName::PhysicalHarm, "assets/physical_harm.wav")?;
-        self.sound_manager.load_source(
+            .load_source_from_file(SoundEffectName::PhysicalHarm, "assets/physical_harm.wav")?;
+        self.sound_manager.load_source_from_file(
             SoundEffectName::PlayerPhysicalDeath,
             "assets/player_physical_death.wav",
         )?;
+
+        self.sound_manager.play(SoundEffectName::DefaultLaser);
 
         let ship = self.world.spawn(HumanShip::new());
         // spawn_scenario1(&mut self.world);

@@ -147,7 +147,7 @@ pub fn system_projectile_emission(world: &mut World) {
                     gen_projectile(x, y, vx, vy, time::Duration::new(3, 0), pe.hit_damage, RED);
                 projectiles_to_spawn.push(projectile);
                 sound_effects.push(SoundEffectEvent {
-                    name: SoundEffectName::TinyShot,
+                    name: SoundEffectName::DefaultLaser,
                 });
             }
         }
@@ -579,7 +579,7 @@ pub fn system_sound_effects(world: &mut World, sm: &SoundManager) {
     // todo query, play, cleanup sound events
     let mut sound_events_to_despawn = vec![];
     for (ent, (sfx)) in world.query_mut::<(&SoundEffectEvent)>() {
-        sm.play(&sfx.name);
+        sm.play(sfx.name);
         sound_events_to_despawn.push(ent);
     }
     for x in sound_events_to_despawn {
