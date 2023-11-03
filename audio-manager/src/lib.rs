@@ -1,11 +1,50 @@
 use std::{collections::HashMap, fs::File, io::BufReader};
 
-use egui_wgpu::wgpu::Device;
+// use egui_wgpu::wgpu::Device;
 use rodio::{
     cpal::traits::HostTrait, source::Buffered, Decoder, DeviceTrait, OutputStream,
     OutputStreamHandle, Source,
 };
-use sfxr::WaveType;
+use sfxr::Sample;
+
+pub trait SoundEffectName: 'static {
+    fn id(&self) -> u32;
+}
+
+impl PartialEq for dyn SoundEffectName {
+    fn eq(&self, other: &Self) -> bool {
+        // Compare the underlying SoundEffectName values
+        self.id() == other.id()
+    }
+}
+
+impl Eq for dyn SoundEffectName {}
+
+use std::hash::{Hash, Hasher};
+impl Hash for dyn SoundEffectName {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        // Hash the underlying SoundEffectName value
+        self.id().hash(state);
+    }
+}
+// pub struct SoundEffectNameWrapper(Box<dyn SoundEffectName>);
+
+// impl PartialEq for SoundEffectNameWrapper {
+//     fn eq(&self, other: &Self) -> bool {
+//         // Compare the underlying SoundEffectName values
+//         self.0.id() == other.0.id()
+//     }
+// }
+
+// impl Eq for SoundEffectNameWrapper {}
+
+// use std::hash::{Hash, Hasher};
+// impl Hash for SoundEffectNameWrapper {
+//     fn hash<H: Hasher>(&self, state: &mut H) {
+//         // Hash the underlying SoundEffectName value
+//         self.0.id().hash(state);
+//     }
+// }
 
 #[derive(Clone, Copy)]
 pub struct SfxrBuffer {
@@ -55,19 +94,6 @@ impl Source for SfxrBuffer {
     }
 }
 
-#[derive(Copy, Clone, Eq, PartialEq, Hash)]
-pub enum SoundEffectName {
-    DefaultLaser,
-    TinyShot,
-    LightShot,
-    MedShot,
-    MamaMiaShot,
-    Scratch,
-    PhysicalDeath,
-    PhysicalHarm,
-    PlayerPhysicalDeath,
-}
-
 type BufferedFile = Buffered<Decoder<BufReader<File>>>;
 
 pub enum SoundSource {
@@ -75,7 +101,7 @@ pub enum SoundSource {
     SfxrBuffer(SfxrBuffer),
 }
 
-type HashMapSoundEffects = HashMap<SoundEffectName, SoundSource>;
+type HashMapSoundEffects = HashMap<u32, SoundSource>;
 pub struct SoundManager {
     _stream: OutputStream,
     stream_handle: OutputStreamHandle,
@@ -96,50 +122,43 @@ impl SoundManager {
             .expect("Failed to find audio output device");
 
         let (_stream, stream_handle) = OutputStream::try_from_device(&device).unwrap();
-        let sources = match SoundManager::load_core_sound_effects() {
-            Ok(sources) => sources,
-            Err(e) => return Err(anyhow::anyhow!("Failed to load core sound effects")),
-        };
+        // let sources = match SoundManager::load_core_sound_effects() {
+        // Ok(sources) => sources,
+        //     Err(e) => return Err(anyhow::anyhow!("Failed to load core sound effects")),
+        // };
 
         Ok(Self {
             _stream,
             stream_handle,
-            sources,
+            sources: HashMap::new(),
         })
     }
-
-    fn load_core_sound_effects() -> Result<HashMapSoundEffects, anyhow::Error> {
-        let mut sources: HashMapSoundEffects = HashMap::new();
-
-        let sample = AionLaser::default();
-
+    pub fn load_source_from_sfxr_sample(
+        &mut self,
+        name: impl SoundEffectName,
+        sample: Sample,
+    ) -> Result<(), anyhow::Error> {
         let mut generator = sfxr::Generator::new(sample);
         let mut source = SoundSource::SfxrBuffer(SfxrBuffer::new());
+
         if let SoundSource::SfxrBuffer(sfxr_buffer) = &mut source {
             generator.generate(&mut sfxr_buffer.buffer);
         }
 
-        println!("in load core sfx",);
-        if let SoundSource::SfxrBuffer(source) = &mut source {
-            if !source.buffer.iter().all(|&sample| sample != 0.0) {
-                println!("buffer not filled completely",);
-            }
-        }
-
-        // let mut buffer_size = 44100;
-        // while {
-        // } {
+        // println!("in load core sfx",);
+        // if let SoundSource::SfxrBuffer(source) = &mut source {
+        //     if !source.buffer.iter().all(|&sample| sample != 0.0) {
+        //         println!("buffer not filled completely",);
+        //     }
         // }
 
-        sources.insert(SoundEffectName::DefaultLaser, source);
-
-        // TODO add energy particle
-        Ok(sources)
+        self.sources.insert(name.id(), source);
+        Ok(())
     }
 
     pub fn load_source_from_file(
         &mut self,
-        name: SoundEffectName,
+        name: impl SoundEffectName,
         file_path: &str,
     ) -> Result<(), anyhow::Error> {
         let source = SoundSource::BufferedFile(
@@ -149,13 +168,13 @@ impl SoundManager {
             .expect("Couldn't load source.")
             .buffered(),
         );
-        self.sources.insert(name, source);
+        self.sources.insert(name.id(), source);
         Ok(())
     }
 
     pub fn dev_gen_source(
         &mut self,
-        name: SoundEffectName,
+        name: impl SoundEffectName,
         sample: sfxr::Sample,
     ) -> Result<(), anyhow::Error> {
         let mut generator = sfxr::Generator::new(sample);
@@ -166,7 +185,7 @@ impl SoundManager {
         if let SoundSource::SfxrBuffer(sfxr_buffer) = &mut source {
             generator.generate(&mut sfxr_buffer.buffer);
         }
-        self.sources.insert(name, source);
+        self.sources.insert(name.id(), source);
         Ok(())
     }
 
@@ -175,8 +194,8 @@ impl SoundManager {
     //     // TODO clamp/bound params or resulting sample to ensure "reasonableness": volume range, distortion, length, etc...
     // }
 
-    pub fn play(&self, name: SoundEffectName) {
-        self.sources.get(&name).map_or_else(
+    pub fn play(&self, name: impl SoundEffectName) {
+        self.sources.get(&name.id()).map_or_else(
             || Err(eprintln!("Audio source not found for name.")),
             |sound_source| {
                 match sound_source {
@@ -231,143 +250,3 @@ impl SoundManager {
         }
     }
 }
-
-// can be any sfxr sample archetype..corresponding to appropriate aion projectile: particle/energy/laser cannon/technical/matter
-// TODO builder pattern
-struct AionLaser;
-impl AionLaser {
-    pub fn new(
-        wave_type: WaveType,
-        base_freq: f64,
-        freq_limit: f64,
-        freq_ramp: f64,
-    ) -> Result<sfxr::Sample, &'static str> {
-        if !base_freq.validate(0.1, 1.) {
-            return Err("base_freq must be between 0.1 and 1.0");
-        }
-        if !freq_limit.validate(0., 1.) {
-            return Err("freq_limit must be between 0.0 and 1.0");
-        }
-        if !freq_ramp.validate(-1., -0.01) {
-            return Err("freq_ramp must be between -1.0 and -0.01");
-        }
-        // let mut s = sfxr::Sample::new();
-
-        let mut s = Self::default();
-
-        // set specifiables
-        s.wave_type = wave_type;
-        s.base_freq = base_freq;
-        s.freq_limit = freq_limit;
-        s.freq_ramp = freq_ramp;
-
-        Ok(s)
-    }
-    pub fn default() -> sfxr::Sample {
-        let mut s = sfxr::Sample::new();
-        s.wave_type = sfxr::WaveType::Square;
-        s.base_freq = 0.9;
-        s.freq_limit = 0.5;
-        s.freq_ramp = -0.3;
-
-        // set sample defaults
-        // mid means middle value wrt sfxr example rng ranges
-        s.env_attack = 0.;
-        s.env_sustain = 0.2; // mid
-        s.env_decay = 0.1; // mid
-
-        // s.duty = 0.;
-        // s.duty_ramp = 0.;
-
-        s
-        // sfxr::Sample::laser(None)
-    }
-}
-
-pub trait ValidRange {
-    fn validate(&self, min: Self, max: Self) -> bool;
-}
-
-impl ValidRange for f64 {
-    fn validate(&self, min: Self, max: Self) -> bool {
-        *self >= min && *self <= max
-    }
-}
-
-// wave_type: WaveType::Square,
-// base_freq: 0.3,
-// freq_limit: 0.0,
-// freq_ramp: 0.0,
-// freq_dramp: 0.0,
-// duty: 0.0,
-// duty_ramp: 0.0,
-
-// vib_strength: 0.0,
-// vib_speed: 0.0,
-// vib_delay: 0.0,
-
-// env_attack: 0.4,
-// env_sustain: 0.1,
-// env_decay: 0.5,
-// env_punch: 0.0,
-
-// lpf_resonance: 0.0,
-// lpf_freq: 1.0,
-// lpf_ramp: 0.0,
-// hpf_freq: 0.0,
-// hpf_ramp: 0.0,
-
-// pha_offset: 0.0,
-// pha_ramp: 0.0,
-
-// repeat_speed: 0.0,
-
-// arp_speed: 0.0,
-// arp_mod: 0.0
-// }
-
-// let rng = &mut SmallRng::seed_from_u64(seed.unwrap_or(0));
-// let mut s = Sample::new();
-
-// let wave_types = {
-//     use WaveType::*;
-//     [Square, Square, Sine, Sine, Triangle]
-// };
-// s.wave_type = rand_element(rng, &wave_types);
-
-// if rand_bool(rng, 1, 2) {
-//     s.base_freq = rand_f64(rng, 0.3, 0.9);
-//     s.freq_limit = rand_f64(rng, 0.0, 0.1);
-//     s.freq_ramp = rand_f64(rng, -0.35, -0.65);
-// } else {
-//     s.base_freq = rand_f64(rng, 0.5, 1.0);
-//     s.freq_limit = (s.base_freq - rand_f64(rng, 0.2, 0.8)).max(0.2);
-//     s.freq_ramp = rand_f64(rng, -0.15, -0.35);
-// }
-
-// if rand_bool(rng, 1, 1) {
-//     s.duty = rand_f32(rng, 0.0, 0.5);
-//     s.duty_ramp = rand_f32(rng, 0.0, 0.2);
-// } else {
-//     s.duty = rand_f32(rng, 0.4, 0.9);
-//     s.duty_ramp = rand_f32(rng, 0.0, -0.7);
-// }
-
-// s.env_attack = 0.0;
-// s.env_sustain = rand_f32(rng, 0.1, 0.3);
-// s.env_decay = rand_f32(rng, 0.0, 0.4);
-
-// if rand_bool(rng, 1, 1) {
-//     s.env_punch = rand_f32(rng, 0.0, 0.3);
-// }
-
-// if rand_bool(rng, 1, 2) {
-//     s.pha_offset = rand_f32(rng, 0.0, 0.2);
-//     s.pha_ramp = -rand_f32(rng, 0.0, 0.2);
-// }
-
-// if rand_bool(rng, 1, 1) {
-//     s.hpf_freq = rand_f32(rng, 0.0, 0.3);
-// }
-
-// s

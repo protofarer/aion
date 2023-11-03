@@ -1,4 +1,5 @@
 use anyhow::{anyhow, Context, Result};
+use audio_manager::SoundManager;
 use hecs::{PreparedQuery, With, Without, World};
 use log::info;
 use rand::prelude::*;
@@ -19,7 +20,7 @@ use crate::archetypes::{
     gen_attached_orbiting_particle, gen_buncha_rng_particles, gen_ping_animation,
     gen_unattached_orbiting_particle,
 };
-use crate::audio::{SoundEffectName, SoundManager};
+use crate::audio::{load_core_sound_effects, SoundEffectNames};
 use crate::avatars::{Circloid, HumanShip};
 use crate::draw::{draw_arcs, draw_circle, draw_pixel, draw_rect};
 use crate::gui::Framework;
@@ -121,20 +122,9 @@ impl Game {
     pub fn setup(&mut self) -> Result<(), anyhow::Error> {
         dev!("SETUP start");
 
-        self.sound_manager
-            .load_source_from_file(SoundEffectName::TinyShot, "assets/tiny_shot.wav")?;
-        self.sound_manager
-            .load_source_from_file(SoundEffectName::Scratch, "assets/scratch.wav")?;
-        self.sound_manager
-            .load_source_from_file(SoundEffectName::PhysicalDeath, "assets/physical_death.wav")?;
-        self.sound_manager
-            .load_source_from_file(SoundEffectName::PhysicalHarm, "assets/physical_harm.wav")?;
-        self.sound_manager.load_source_from_file(
-            SoundEffectName::PlayerPhysicalDeath,
-            "assets/player_physical_death.wav",
-        )?;
+        load_core_sound_effects(&mut self.sound_manager);
 
-        self.sound_manager.play(SoundEffectName::DefaultLaser);
+        self.sound_manager.play(SoundEffectNames::DefaultLaser);
 
         let ship = self.world.spawn(HumanShip::new());
         // spawn_scenario1(&mut self.world);

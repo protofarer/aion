@@ -1,12 +1,13 @@
 use std::time::{self, Duration};
 
 use crate::archetypes::{gen_ping_animation, gen_projectile, ArchProjectile};
-use crate::audio::{SoundEffectName, SoundManager};
+use crate::audio::SoundEffectNames;
 use crate::draw::draw_arcs;
 use crate::game::{RunState, WindowDims};
 use crate::pixel::{RED, WHITE};
 use crate::time::Dt;
 use crate::{components::*, dev, LOGICAL_WINDOW_HEIGHT, LOGICAL_WINDOW_WIDTH};
+use audio_manager::SoundManager;
 use hecs::{Entity, Query, QueryBorrow, With, Without, World};
 use nalgebra_glm::Vec2;
 use winit::event::VirtualKeyCode;
@@ -147,7 +148,7 @@ pub fn system_projectile_emission(world: &mut World) {
                     gen_projectile(x, y, vx, vy, time::Duration::new(3, 0), pe.hit_damage, RED);
                 projectiles_to_spawn.push(projectile);
                 sound_effects.push(SoundEffectEvent {
-                    name: SoundEffectName::DefaultLaser,
+                    name: SoundEffectNames::DefaultLaser,
                 });
             }
         }
@@ -491,7 +492,7 @@ pub fn system_physical_damage_resolution(world: &mut World) {
         let health = query.get().unwrap();
         health.hp -= dmg;
         sound_effects_to_play.push(SoundEffectEvent {
-            name: SoundEffectName::Scratch,
+            name: SoundEffectNames::Scratch,
         });
         if health.hp <= 0 {
             killed_bodies.push(*receiver);
@@ -506,11 +507,11 @@ pub fn system_physical_damage_resolution(world: &mut World) {
     for killed_body in killed_bodies {
         if world.get::<(&HumanInputCpt)>(killed_body).is_ok() {
             sound_effects_to_play.push(SoundEffectEvent {
-                name: SoundEffectName::PlayerPhysicalDeath,
+                name: SoundEffectNames::PlayerPhysicalDeath,
             });
         } else {
             sound_effects_to_play.push(SoundEffectEvent {
-                name: SoundEffectName::PhysicalDeath,
+                name: SoundEffectNames::PhysicalDeath,
             });
         }
         world.despawn(killed_body);
@@ -576,12 +577,15 @@ pub fn system_animation_lifecycle(world: &mut World, dt: Dt) {
 }
 
 pub fn system_sound_effects(world: &mut World, sm: &SoundManager) {
-    // todo query, play, cleanup sound events
     let mut sound_events_to_despawn = vec![];
+
+    // Query and Play
     for (ent, (sfx)) in world.query_mut::<(&SoundEffectEvent)>() {
         sm.play(sfx.name);
         sound_events_to_despawn.push(ent);
     }
+
+    // Clear
     for x in sound_events_to_despawn {
         world.despawn(x);
     }

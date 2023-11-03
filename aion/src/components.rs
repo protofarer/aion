@@ -1,5 +1,5 @@
 use crate::{
-    audio::SoundEffectName,
+    audio::SoundEffectNames,
     pixel::{Color, BLUE, CYAN, GREEN, GREY, MAGENTA, ORANGE, RED, WHITE, YELLOW},
     LOGICAL_WINDOW_HEIGHT, LOGICAL_WINDOW_WIDTH,
 };
@@ -410,5 +410,5 @@ pub struct PingDrawCpt {
 }
 
 pub struct SoundEffectEvent {
-    pub name: SoundEffectName, // the const
+    pub name: SoundEffectNames, // the const
 }

@@ -43,6 +43,7 @@ use init::{init_gfx, init_window};
 use logging::log_error;
 use time::FrameTimer;
 
+use audio_manager::SoundManager;
 use game::Game;
 use game::{GetRunState, RunState};
 use game_loop::game_loop;
