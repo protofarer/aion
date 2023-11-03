@@ -265,22 +265,22 @@ impl AionLaser {
     }
     pub fn default() -> sfxr::Sample {
         let mut s = sfxr::Sample::new();
-        s.wave_type = sfxr::WaveType::Triangle;
+        s.wave_type = sfxr::WaveType::Square;
         s.base_freq = 0.9;
-        s.freq_limit = 0.2;
-        s.freq_ramp = -0.005;
+        s.freq_limit = 0.5;
+        s.freq_ramp = -0.3;
 
         // set sample defaults
         // mid means middle value wrt sfxr example rng ranges
         s.env_attack = 0.;
-        s.env_sustain = 1.; // mid
-        s.env_decay = 0.2; // mid
+        s.env_sustain = 0.2; // mid
+        s.env_decay = 0.1; // mid
 
         // s.duty = 0.;
         // s.duty_ramp = 0.;
 
-        // s
-        sfxr::Sample::laser(None)
+        s
+        // sfxr::Sample::laser(None)
     }
 }
 
