@@ -148,7 +148,7 @@ pub fn system_projectile_emission(world: &mut World) {
                     gen_projectile(x, y, vx, vy, time::Duration::new(3, 0), pe.hit_damage, RED);
                 projectiles_to_spawn.push(projectile);
                 sound_effects.push(SoundEffectEvent {
-                    name: SoundEffectNames::Laser,
+                    name: SoundEffectNames::Photon,
                 });
             }
         }
