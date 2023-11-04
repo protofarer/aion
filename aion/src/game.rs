@@ -1,3 +1,4 @@
+#[allow(warnings)]
 use anyhow::{anyhow, Context, Result};
 use audio_manager::SoundManager;
 use hecs::{PreparedQuery, With, Without, World};
@@ -5,7 +6,6 @@ use log::info;
 use rand::prelude::*;
 use rodio::cpal::traits::HostTrait;
 use rodio::{Decoder, DeviceTrait, OutputStream, OutputStreamHandle, Source};
-#[allow(warnings)]
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::BufReader;
@@ -20,18 +20,17 @@ use crate::archetypes::{
     gen_attached_orbiting_particle, gen_buncha_rng_particles, gen_ping_animation,
     gen_unattached_orbiting_particle,
 };
-use crate::audio::{load_core_sound_effects, SoundEffectNames};
+use crate::audio::{load_essential_sound_effects, SoundEffectNames};
 use crate::avatars::{Circloid, HumanShip};
-use crate::draw::{draw_arcs, draw_circle, draw_pixel, draw_rect};
+use crate::gfx::draw::{draw_arcs, draw_circle, draw_pixel, draw_rect};
+use crate::gfx::draw_bodies::{draw_avatar, draw_boundary, draw_collision_circle};
+use crate::gfx::pixel::*;
 use crate::gui::Framework;
-use crate::pixel::*;
 use crate::scenario::{
     gen_intersecting_particles, gen_row_particles, spawn_scenario1, spawn_scenario_shootingallery,
 };
-use crate::time::{Dt, FrameTimer};
-use crate::util::*;
-use crate::{dev, game, log_error, LOGICAL_WINDOW_HEIGHT, LOGICAL_WINDOW_WIDTH}; // little function in main.rs
-use crate::{draw_bodies::*, DebugContext};
+use crate::util::time::{Dt, FrameTimer};
+use crate::{dev, game, log_error, DebugContext, LOGICAL_WINDOW_HEIGHT, LOGICAL_WINDOW_WIDTH}; // little function in main.rs
 use nalgebra_glm::Vec2;
 use pixels::{Pixels, SurfaceTexture};
 
@@ -109,6 +108,7 @@ impl Game {
         dev!("INIT start");
 
         let mut sound_manager = SoundManager::new().map_err(|e| anyhow!("{}", e))?;
+
         dev!("INIT fin");
 
         Ok(Self {
@@ -119,14 +119,15 @@ impl Game {
         })
     }
 
-    pub fn setup(&mut self) -> Result<(), anyhow::Error> {
+    pub fn setup(&mut self) {
         dev!("SETUP start");
 
-        load_core_sound_effects(&mut self.sound_manager);
-
-        self.sound_manager.play(SoundEffectNames::DefaultLaser);
+        if let Err(e) = load_essential_sound_effects(&mut self.sound_manager) {
+            eprintln!("{e}");
+        }
 
         let ship = self.world.spawn(HumanShip::new());
+
         // spawn_scenario1(&mut self.world);
         spawn_scenario_shootingallery(&mut self.world);
 
@@ -139,7 +140,6 @@ impl Game {
 
         self.loop_controller.run();
         dev!("SETUP fin");
-        Ok(())
     }
 
     pub fn update(&mut self, dt: Dt) {
@@ -161,7 +161,6 @@ impl Game {
         system_collision_resolution(&mut self.world);
         system_physical_damage_resolution(&mut self.world);
         system_sound_effects(&mut self.world, &self.sound_manager);
-        // ai goes somewhere at the end and produces an input to be handled in next update tick
     }
 
     pub fn render(&mut self, pixels: &mut Pixels, dbg_ctx: &DebugContext, rdt: Dt) {
@@ -169,11 +168,9 @@ impl Game {
             return;
         }
         let mut frame = pixels.frame_mut();
-
         clear(frame);
         draw_boundary(frame);
 
-        // draw avatars
         for (_id, (transform, drawbody)) in self.world.query_mut::<(&TransformCpt, &DrawBodyCpt)>()
         {
             draw_avatar(frame, transform, drawbody);
@@ -181,36 +178,6 @@ impl Game {
 
         system_render_pings(&mut self.world, &mut frame);
         system_animation_lifecycle(&mut self.world, rdt);
-
-        // draw orbiting particles
-        // ? refactor this?, could be done in avatar render loop?
-        // the transformcpt for a orbitparticle should be for the particle itself
-        // orbit particle integration should handle correct transform update
-        // the rigidbody should represent the actual particle itself... i think
-        // is there a better way to do this?
-        // transform is important for collisions..when this becomes a sort of orbitingprojectile
-        // ... or
-        // ... keep this and have collision detector calculate particle real position
-        // ... or add an OrbitParticlePositionCpt... but then I am doing
-        // collision area calculations differently than just using transformcpt?
-        // * ... or maybe the OrbitParticleCpt HAS a position which is only used for the center of the orbit!
-        // - then no need for rigidbody, add velocity to cpt itself
-        // - (add in rigidbodycpt)
-        // - re-use RotatableBodyCpt for the theta speed, perhaps add a MoveAttributes for speed
-        // ? - is it best to define kinematics in terms of theta or tangential velocity?
-
-        // orbiting particle showdown
-        // - transform is actual particle position
-        // - have a settable speed (easier to think about than angular_velocity) and r
-        // - rigidbody velocity reflects above, is for actual particle
-        // - can have a TransformParentCpt, whose entity the orbital center position will copy
-
-        // for (_id, (transform, drawbody, orbiting_particle)) in
-        //     self.world
-        //         .query_mut::<(&TransformCpt, &DrawBodyCpt, &OrbitParticleCpt)>()
-        // {
-        //     draw_body_of_orbiting_particle(frame, transform, drawbody, orbiting_particle);
-        // }
 
         if dbg_ctx.is_drawing_collisionareas {
             for (_id, (transform, collision_circle)) in self
@@ -220,10 +187,6 @@ impl Game {
                 draw_collision_circle(frame, transform, collision_circle);
             }
         }
-    }
-
-    pub fn destroy(&self) {
-        dev!("DESTROY game");
     }
 }
 

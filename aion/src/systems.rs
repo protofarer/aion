@@ -2,10 +2,10 @@ use std::time::{self, Duration};
 
 use crate::archetypes::{gen_ping_animation, gen_projectile, ArchProjectile};
 use crate::audio::SoundEffectNames;
-use crate::draw::draw_arcs;
 use crate::game::{RunState, WindowDims};
-use crate::pixel::{RED, WHITE};
-use crate::time::Dt;
+use crate::gfx::draw::draw_arcs;
+use crate::gfx::pixel::{RED, WHITE};
+use crate::util::time::Dt;
 use crate::{components::*, dev, LOGICAL_WINDOW_HEIGHT, LOGICAL_WINDOW_WIDTH};
 use audio_manager::SoundManager;
 use hecs::{Entity, Query, QueryBorrow, With, Without, World};
@@ -148,7 +148,7 @@ pub fn system_projectile_emission(world: &mut World) {
                     gen_projectile(x, y, vx, vy, time::Duration::new(3, 0), pe.hit_damage, RED);
                 projectiles_to_spawn.push(projectile);
                 sound_effects.push(SoundEffectEvent {
-                    name: SoundEffectNames::DefaultLaser,
+                    name: SoundEffectNames::Laser,
                 });
             }
         }

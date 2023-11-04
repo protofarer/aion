@@ -1,4 +1,4 @@
-use crate::{archetypes::*, pixel::*, LOGICAL_WINDOW_HEIGHT, LOGICAL_WINDOW_WIDTH};
+use crate::{archetypes::*, gfx::pixel::*, LOGICAL_WINDOW_HEIGHT, LOGICAL_WINDOW_WIDTH};
 use hecs::World;
 use std::time;
 

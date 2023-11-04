@@ -27,24 +27,6 @@ impl Hash for dyn SoundEffectName {
         self.id().hash(state);
     }
 }
-// pub struct SoundEffectNameWrapper(Box<dyn SoundEffectName>);
-
-// impl PartialEq for SoundEffectNameWrapper {
-//     fn eq(&self, other: &Self) -> bool {
-//         // Compare the underlying SoundEffectName values
-//         self.0.id() == other.0.id()
-//     }
-// }
-
-// impl Eq for SoundEffectNameWrapper {}
-
-// use std::hash::{Hash, Hasher};
-// impl Hash for SoundEffectNameWrapper {
-//     fn hash<H: Hasher>(&self, state: &mut H) {
-//         // Hash the underlying SoundEffectName value
-//         self.0.id().hash(state);
-//     }
-// }
 
 #[derive(Clone, Copy)]
 pub struct SfxrBuffer {
@@ -110,9 +92,9 @@ pub struct SoundManager {
 
 impl SoundManager {
     pub fn new() -> Result<Self, anyhow::Error> {
-        // let device_name = "hdmi:CARD=HDMI,DEV=2";
+        let device_name = "hdmi:CARD=HDMI,DEV=2";
         // let device_name = "front:CARD=Generic,DEV=0";
-        let device_name = "sysdefault:CARD=Generic";
+        // let device_name = "sysdefault:CARD=Generic";
 
         let host = rodio::cpal::default_host();
         let device = host
@@ -156,11 +138,24 @@ impl SoundManager {
         Ok(())
     }
 
-    pub fn load_source_from_file(
+    pub fn load_source_from_assets(
         &mut self,
         name: impl SoundEffectName,
-        file_path: &str,
+        file_name: &str,
     ) -> Result<(), anyhow::Error> {
+        // TODO Print path for file not found error, instead of panicking
+        let home_key = if cfg!(target_os = "windows") {
+            "USERPROFILE"
+        } else {
+            "HOME"
+        };
+        let home_dir = match std::env::var(home_key) {
+            Ok(dir) => dir,
+            Err(e) => return Err(anyhow::anyhow!("Couldnt determine home directory. {}", e)),
+        };
+
+        let project_root = std::path::PathBuf::from(home_dir).join("projects/aion/aion/assets/");
+        let file_path = project_root.join(file_name);
         let source = SoundSource::BufferedFile(
             Decoder::new(BufReader::new(
                 File::open(file_path).expect("Audio file not found."),
@@ -212,41 +207,42 @@ impl SoundManager {
             },
         );
     }
+}
 
-    pub fn scan_usable_devices_by_sound() {
-        const SLEEP_DURATION_SECS: u64 = 1;
+pub fn scan_usable_devices_by_sound() {
+    const SLEEP_DURATION_SECS: u64 = 1;
 
-        let host = rodio::cpal::default_host();
-        let output_devices = host.output_devices().unwrap();
+    let host = rodio::cpal::default_host();
+    let output_devices = host.output_devices().unwrap();
 
-        println!("\n\nScanning for usable devices, listen for sound. Watch for errors.",);
-        println!("NB: These are *ALSA* device names as provided by `cpal`.\n",);
-        for device in output_devices {
-            // todo use hold in memory instead (faster than file i/o)
-            let file = BufReader::new(File::open("jump.wav").unwrap());
-            let my_source = Decoder::new(file).unwrap();
+    println!("\n\nScanning for usable devices, listen for sound. Watch for errors.",);
+    println!("NB: These are *ALSA* device names as provided by `cpal`.\n",);
+    for device in output_devices {
+        // todo use hold in memory instead (faster than file i/o)
+        let file =
+            BufReader::new(File::open("/home/kenny/projects/aion/aion/assets/jump.wav").unwrap());
+        let my_source = Decoder::new(file).unwrap();
 
-            let name = device.name().unwrap();
-            println!("{}", name);
+        let name = device.name().unwrap();
+        println!("{}", name);
 
-            match OutputStream::try_from_device(&device) {
-                Ok((_stream, stream_handle)) => {
-                    match stream_handle.play_raw(my_source.convert_samples()) {
-                        Ok(_) => {
-                            println!("\tPlaying on device...");
-                            std::thread::sleep(std::time::Duration::from_secs(SLEEP_DURATION_SECS));
-                            println!("\tDone.");
-                        }
-                        Err(e) => {
-                            println!("\tFailed to play on device: {:?}", e)
-                        }
+        match OutputStream::try_from_device(&device) {
+            Ok((_stream, stream_handle)) => {
+                match stream_handle.play_raw(my_source.convert_samples()) {
+                    Ok(_) => {
+                        println!("\tPlaying on device...");
+                        std::thread::sleep(std::time::Duration::from_secs(SLEEP_DURATION_SECS));
+                        println!("\tDone.");
+                    }
+                    Err(e) => {
+                        println!("\tFailed to play on device: {:?}", e)
                     }
                 }
-                Err(e) => {
-                    eprintln!("\tFailed to create output stream: {:?}", e);
-                }
-            };
-            println!("---------------------------------------");
-        }
+            }
+            Err(e) => {
+                eprintln!("\tFailed to create output stream: {:?}", e);
+            }
+        };
+        println!("---------------------------------------");
     }
 }

@@ -13,8 +13,8 @@ use crate::{
         MoveAttributesCpt, ProjectileEmitterCpt, RigidBodyCpt, RotatableBodyCpt,
         RotationalInputCpt, Theta, TransformCpt,
     },
-    draw_bodies::generate_ship_lines,
-    pixel::{BLUE, GREEN, WHITE, YELLOW},
+    gfx::draw_bodies::generate_ship_lines,
+    gfx::pixel::{BLUE, GREEN, WHITE, YELLOW},
     LOGICAL_WINDOW_HEIGHT, LOGICAL_WINDOW_WIDTH,
 };
 

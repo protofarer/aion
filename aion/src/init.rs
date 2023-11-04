@@ -1,3 +1,4 @@
+use anyhow::Context;
 use pixels::{Pixels, SurfaceTexture};
 use winit::{
     dpi::LogicalSize,
@@ -18,7 +19,11 @@ pub fn init_window(event_loop: &EventLoop<()>) -> Window {
         .with_inner_size(physical_size)
         .with_min_inner_size(logical_size)
         .build(&event_loop)
-        .unwrap()
+        .with_context(|| "Failed to create window")
+        .unwrap_or_else(|e| {
+            eprintln!("{e}");
+            panic!("Window initialization error");
+        })
 }
 
 pub fn init_gfx(

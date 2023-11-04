@@ -3,18 +3,14 @@ mod archetypes;
 mod audio;
 mod avatars;
 mod components;
-mod draw;
-mod draw_bodies;
 mod game;
 mod gui;
 mod init;
-mod logging;
-mod monitor;
-mod pixel;
 mod scenario;
 mod systems;
-mod time;
-mod util;
+
+pub mod gfx;
+pub mod util;
 
 extern crate procfs;
 
@@ -26,10 +22,10 @@ use std::{
     time::{Duration, Instant},
 };
 
+use gfx::pixel::{Color, BLACK};
 use gui::Framework;
-use monitor::get_process_memory;
-use pixel::{Color, BLACK};
 use pixels::{Error, Pixels, SurfaceTexture};
+use util::monitor::get_process_memory;
 use winit::{
     dpi::LogicalSize,
     event::{ElementState, Event, KeyboardInput, VirtualKeyCode, WindowEvent},
@@ -40,8 +36,8 @@ use winit_input_helper::WinitInputHelper;
 
 use gui::StateMonitor;
 use init::{init_gfx, init_window};
-use logging::log_error;
-use time::FrameTimer;
+use util::logging::log_error;
+use util::time::FrameTimer;
 
 use audio_manager::SoundManager;
 use game::Game;
@@ -108,6 +104,7 @@ fn main() {
 
     let event_loop = EventLoop::new();
     let window = init_window(&event_loop);
+
     let window = Arc::new(window);
 
     let (mut pixels, mut framework) = init_gfx(&event_loop, &window).unwrap();

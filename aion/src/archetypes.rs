@@ -10,7 +10,7 @@ use rand::Rng;
 // - facilitates easy specification of avatars via generation functions
 // - for specifying and exploring the "avatar design spaces"
 
-use crate::{components::*, dev, pixel::*, LOGICAL_WINDOW_HEIGHT, LOGICAL_WINDOW_WIDTH};
+use crate::{components::*, dev, gfx::pixel::*, LOGICAL_WINDOW_HEIGHT, LOGICAL_WINDOW_WIDTH};
 
 // ArchParticle
 // - particle primitive

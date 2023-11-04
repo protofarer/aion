@@ -1,6 +1,6 @@
 use crate::{
     audio::SoundEffectNames,
-    pixel::{Color, BLUE, CYAN, GREEN, GREY, MAGENTA, ORANGE, RED, WHITE, YELLOW},
+    gfx::pixel::{Color, BLUE, CYAN, GREEN, GREY, MAGENTA, ORANGE, RED, WHITE, YELLOW},
     LOGICAL_WINDOW_HEIGHT, LOGICAL_WINDOW_WIDTH,
 };
 use hecs::Entity;

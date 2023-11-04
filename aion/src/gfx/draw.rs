@@ -1,6 +1,6 @@
-use crate::{components::ColorBodyCpt, dev, pixel::Color, util::rotate_point};
+use crate::{components::ColorBodyCpt, dev, gfx::pixel::Color};
 
-use super::{LOGICAL_WINDOW_HEIGHT, LOGICAL_WINDOW_WIDTH};
+use crate::{LOGICAL_WINDOW_HEIGHT, LOGICAL_WINDOW_WIDTH};
 
 pub fn draw_pixel(frame: &mut [u8], x: i32, y: i32, color: Color) {
     // this is the pixel guard
@@ -175,4 +175,12 @@ fn cast_and_rotate_point(
         y_center as f32,
     );
     (x_out as i32, y_out as i32)
+}
+
+pub fn rotate_point(x: f32, y: f32, rotation: f32, cx: f32, cy: f32) -> (f32, f32) {
+    let x_translated = x - cx as f32;
+    let y_translated = y - cy as f32;
+    let x_rotated = x_translated * rotation.cos() + y_translated * rotation.sin();
+    let y_rotated = x_translated * rotation.sin() - y_translated * rotation.cos();
+    (x_rotated + cx as f32, y_rotated + cy as f32)
 }

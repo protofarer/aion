@@ -1,6 +1,5 @@
 use crate::{
-    components::*, dev, draw::*, pixel::*, util::rotate_point, LOGICAL_WINDOW_HEIGHT,
-    LOGICAL_WINDOW_WIDTH,
+    components::*, dev, gfx::draw::*, gfx::pixel::*, LOGICAL_WINDOW_HEIGHT, LOGICAL_WINDOW_WIDTH,
 };
 use nalgebra_glm::Vec2;
 
