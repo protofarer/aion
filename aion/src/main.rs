@@ -67,9 +67,26 @@ fn process_dbg_keys(game: &mut Game, dbg_ctx: &mut DebugContext) {
     }
 }
 
+#[derive(Clone, Copy)]
 pub struct DebugContext {
     is_on: bool,
     is_drawing_collisionareas: bool,
+}
+impl DebugContext {
+    pub fn new() -> Self {
+        Default::default()
+    }
+    pub fn get_mut_ref(&self) -> Rc<RefCell<&DebugContext>> {
+        Rc::new(RefCell::new(self))
+    }
+}
+impl Default for DebugContext {
+    fn default() -> Self {
+        DebugContext {
+            is_on: false,
+            is_drawing_collisionareas: false,
+        }
+    }
 }
 
 struct RenderContext {
@@ -78,14 +95,45 @@ struct RenderContext {
     render_timer: FrameTimer,
     update_timer: Rc<RefCell<FrameTimer>>,
 }
+impl RenderContext {
+    pub fn new(
+        pixels: Rc<RefCell<Pixels>>,
+        framework: Rc<RefCell<Framework>>,
+        render_timer: FrameTimer,
+        update_timer: Rc<RefCell<FrameTimer>>,
+    ) -> Box<Self> {
+        Box::new(RenderContext {
+            pixels,
+            framework,
+            render_timer,
+            update_timer,
+        })
+    }
+}
 
 struct UpdateContext {
     update_timer: Rc<RefCell<FrameTimer>>,
+}
+impl UpdateContext {
+    pub fn new(update_timer: Rc<RefCell<FrameTimer>>) -> Box<Self> {
+        Box::new(UpdateContext { update_timer })
+    }
 }
 
 struct InputContext {
     pixels: Rc<RefCell<Pixels>>,
     framework: Rc<RefCell<Framework>>,
+}
+impl InputContext {
+    pub fn new(
+        pixels_input: Rc<RefCell<Pixels>>,
+        framework_input: Rc<RefCell<Framework>>,
+    ) -> Box<Self> {
+        Box::new(InputContext {
+            pixels: pixels_input,
+            framework: framework_input,
+        })
+    }
 }
 
 pub static LOGICAL_WINDOW_WIDTH: f32 = 960.;
@@ -107,46 +155,34 @@ fn main() {
 
     let window = Arc::new(window);
 
-    let (mut pixels, mut framework) = init_gfx(&event_loop, &window).unwrap();
+    let (mut pixels, mut framework) = init_gfx(&event_loop, &window);
 
-    // data for update closure
-    let pixels_render = Rc::new(RefCell::new(pixels));
-    let pixels_input = Rc::clone(&pixels_render);
-
-    let framework_render = Rc::new(RefCell::new(framework));
-    let framework_input = Rc::clone(&framework_render);
-
-    let mut update_timer = Rc::new(RefCell::new(FrameTimer::new()));
-    let mut update_timer_render = Rc::clone(&update_timer);
-
-    let mut render_timer = FrameTimer::new();
-
-    // data for update closure
-    let mut update_ctx = Box::new(UpdateContext { update_timer });
+    // common timer referenced across closures
+    let shared_timer = Rc::new(RefCell::new(FrameTimer::new()));
 
     // data for render closure
-    let mut render_ctx = Box::new(RenderContext {
-        pixels: pixels_render,
-        framework: framework_render,
-        render_timer: render_timer,
-        update_timer: update_timer_render,
-    });
+    let mut render_ctx: Box<RenderContext> = RenderContext::new(
+        Rc::new(RefCell::new(pixels)),
+        Rc::new(RefCell::new(framework)),
+        FrameTimer::new(),
+        Rc::clone(&shared_timer),
+    );
+
+    // data for update closure
+    let mut update_ctx: Box<UpdateContext> = UpdateContext::new(Rc::clone(&shared_timer));
 
     // data for input closure
-    let mut input_ctx = Box::new(InputContext {
-        pixels: pixels_input,
-        framework: framework_input,
-    });
+    let mut input_ctx: Box<InputContext> = InputContext::new(
+        Rc::clone(&render_ctx.pixels),
+        Rc::clone(&render_ctx.framework),
+    );
 
-    let mut dbg_ctx = DebugContext {
-        is_on: false,
-        is_drawing_collisionareas: false,
-    };
+    let mut dbg_ctx = DebugContext::new();
 
-    let dbg_ctx = Rc::new(RefCell::new(dbg_ctx));
-    let dbg_ctx_render = Rc::clone(&dbg_ctx);
-    let dbg_ctx_input = Rc::clone(&dbg_ctx);
+    let dbg_ctx = Rc::new(RefCell::new(DebugContext::new()));
+    let dbg_ctx_render = Rc::new(dbg_ctx.borrow().clone());
     let dbg_ctx_gui = Rc::clone(&dbg_ctx);
+    let dbg_ctx_input = Rc::clone(&dbg_ctx);
 
     let mut memstat: Option<u64> = None;
 
@@ -181,7 +217,7 @@ fn main() {
                 let mut framework = render_ctx.framework.borrow_mut();
                 let mut pixels = render_ctx.pixels.borrow_mut();
 
-                g.game.render(&mut pixels, &dbg_ctx_render.borrow(), rdt);
+                g.game.render(&mut pixels, &dbg_ctx_render, rdt);
 
                 let render_timer = &render_ctx.render_timer;
                 let update_timer2 = render_ctx.update_timer.borrow();

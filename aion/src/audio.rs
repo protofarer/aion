@@ -33,7 +33,7 @@ impl SoundEffectName for SoundEffectNames {
 }
 
 pub fn load_essential_sound_effects(sm: &mut SoundManager) -> Result<(), anyhow::Error> {
-    sm.load_source_from_assets(SoundEffectNames::TinyShot, "XXXXXXtiny_shot.wav")?;
+    sm.load_source_from_assets(SoundEffectNames::TinyShot, "tiny_shot.wav")?;
     sm.load_source_from_assets(SoundEffectNames::Scratch, "scratch.wav")?;
     sm.load_source_from_assets(SoundEffectNames::PhysicalDeath, "physical_death.wav")?;
     sm.load_source_from_assets(SoundEffectNames::PhysicalHarm, "physical_harm.wav")?;

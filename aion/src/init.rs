@@ -19,17 +19,13 @@ pub fn init_window(event_loop: &EventLoop<()>) -> Window {
         .with_inner_size(physical_size)
         .with_min_inner_size(logical_size)
         .build(&event_loop)
-        .with_context(|| "Failed to create window")
         .unwrap_or_else(|e| {
             eprintln!("{e}");
             panic!("Window initialization error");
         })
 }
 
-pub fn init_gfx(
-    event_loop: &EventLoop<()>,
-    window: &Window,
-) -> Result<(Pixels, Framework), pixels::Error> {
+pub fn init_gfx(event_loop: &EventLoop<()>, window: &Window) -> (Pixels, Framework) {
     let (pixels, framework) = {
         let scale_factor = window.scale_factor() as f32;
         let window_size = window.inner_size(); // Physical screen dims (scaled from logical)
@@ -39,7 +35,11 @@ pub fn init_gfx(
             LOGICAL_WINDOW_WIDTH as u32,
             LOGICAL_WINDOW_HEIGHT as u32,
             surface_texture,
-        )?;
+        )
+        .unwrap_or_else(|e| {
+            eprintln!("{e}");
+            panic!("Pixels initialization error");
+        });
 
         let framework = Framework::new(
             event_loop,
@@ -52,5 +52,5 @@ pub fn init_gfx(
         (pixels, framework)
     };
 
-    Ok((pixels, framework))
+    (pixels, framework)
 }

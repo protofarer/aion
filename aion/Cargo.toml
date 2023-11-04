@@ -28,6 +28,3 @@ sfxr = "0.1.4"
 winit = "0.28"
 winit_input_helper = "0.14"
 audio-manager = { path = "../audio-manager"}
-
-[profile.release]
-debug = true

@@ -1,2 +1,5 @@
 [workspace]
 members = ["aion", "audio-manager"]
+
+[profile.release]
+debug = true

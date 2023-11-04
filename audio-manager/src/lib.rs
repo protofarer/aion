@@ -1,5 +1,6 @@
 use std::{collections::HashMap, fs::File, io::BufReader};
 
+use anyhow::Context;
 // use egui_wgpu::wgpu::Device;
 use rodio::{
     cpal::traits::HostTrait, source::Buffered, Decoder, DeviceTrait, OutputStream,
@@ -13,7 +14,6 @@ pub trait SoundEffectName: 'static {
 
 impl PartialEq for dyn SoundEffectName {
     fn eq(&self, other: &Self) -> bool {
-        // Compare the underlying SoundEffectName values
         self.id() == other.id()
     }
 }
@@ -23,7 +23,6 @@ impl Eq for dyn SoundEffectName {}
 use std::hash::{Hash, Hasher};
 impl Hash for dyn SoundEffectName {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        // Hash the underlying SoundEffectName value
         self.id().hash(state);
     }
 }
@@ -92,22 +91,28 @@ pub struct SoundManager {
 
 impl SoundManager {
     pub fn new() -> Result<Self, anyhow::Error> {
-        let device_name = "hdmi:CARD=HDMI,DEV=2";
+        // let device_name = "hdmi:CARD=HDMI,DEV=2";
         // let device_name = "front:CARD=Generic,DEV=0";
-        // let device_name = "sysdefault:CARD=Generic";
+        let device_name = "sysdefault:CARD=Generic";
 
         let host = rodio::cpal::default_host();
-        let device = host
-            .output_devices()
-            .unwrap()
-            .find(|x| x.name().map(|y| y == device_name).unwrap_or(false))
-            .expect("Failed to find audio output device");
 
-        let (_stream, stream_handle) = OutputStream::try_from_device(&device).unwrap();
-        // let sources = match SoundManager::load_core_sound_effects() {
-        // Ok(sources) => sources,
-        //     Err(e) => return Err(anyhow::anyhow!("Failed to load core sound effects")),
-        // };
+        let device = match host
+            .output_devices()
+            .expect("Should retrieve audio output device")
+            .find(|x| x.name().map(|y| y == device_name).unwrap_or(false))
+            .with_context(|| format!("Failed to find audio output device: {}", device_name))
+        {
+            Ok(device) => device,
+            Err(e) => return Err(e),
+        };
+
+        let (_stream, stream_handle) = match OutputStream::try_from_device(&device)
+            .with_context(|| "Failed to create outputstream")
+        {
+            Ok(x) => x,
+            Err(e) => return Err(e),
+        };
 
         Ok(Self {
             _stream,
@@ -115,6 +120,7 @@ impl SoundManager {
             sources: HashMap::new(),
         })
     }
+
     pub fn load_source_from_sfxr_sample(
         &mut self,
         name: impl SoundEffectName,
@@ -127,15 +133,10 @@ impl SoundManager {
             generator.generate(&mut sfxr_buffer.buffer);
         }
 
-        // println!("in load core sfx",);
-        // if let SoundSource::SfxrBuffer(source) = &mut source {
-        //     if !source.buffer.iter().all(|&sample| sample != 0.0) {
-        //         println!("buffer not filled completely",);
-        //     }
-        // }
-
-        self.sources.insert(name.id(), source);
-        Ok(())
+        match self.sources.insert(name.id(), source) {
+            Some(_) => Ok(()),
+            None => Err(anyhow::anyhow!("No entry for id: {}", name.id())),
+        }
     }
 
     pub fn load_source_from_assets(
@@ -143,7 +144,6 @@ impl SoundManager {
         name: impl SoundEffectName,
         file_name: &str,
     ) -> Result<(), anyhow::Error> {
-        // TODO Print path for file not found error, instead of panicking
         let home_key = if cfg!(target_os = "windows") {
             "USERPROFILE"
         } else {
@@ -155,57 +155,39 @@ impl SoundManager {
         };
 
         let project_root = std::path::PathBuf::from(home_dir).join("projects/aion/aion/assets/");
+
         let file_path = project_root.join(file_name);
-        let source = SoundSource::BufferedFile(
-            Decoder::new(BufReader::new(
-                File::open(file_path).expect("Audio file not found."),
-            ))
-            .expect("Couldn't load source.")
-            .buffered(),
-        );
+        let file = File::open(file_path.clone())
+            .with_context(|| format!("Missing file: {:?}", file_path.to_str().unwrap_or("")))?;
+
+        let decoder = Decoder::new(BufReader::new(file))
+            .with_context(|| "Failed to decode file bufreader")?
+            .buffered();
+
+        let source = SoundSource::BufferedFile(decoder);
+
         self.sources.insert(name.id(), source);
+
         Ok(())
     }
-
-    pub fn dev_gen_source(
-        &mut self,
-        name: impl SoundEffectName,
-        sample: sfxr::Sample,
-    ) -> Result<(), anyhow::Error> {
-        let mut generator = sfxr::Generator::new(sample);
-
-        // I need to feed params into a `sfxr::Sample::... to get... a buffer?`
-        let mut source = SoundSource::SfxrBuffer(SfxrBuffer::new());
-
-        if let SoundSource::SfxrBuffer(sfxr_buffer) = &mut source {
-            generator.generate(&mut sfxr_buffer.buffer);
-        }
-        self.sources.insert(name.id(), source);
-        Ok(())
-    }
-
-    // pub fn gen_source(&mut self, params: SourceParams) {
-    //     // TODO read params to gen buffer of samples using sfxr
-    //     // TODO clamp/bound params or resulting sample to ensure "reasonableness": volume range, distortion, length, etc...
-    // }
 
     pub fn play(&self, name: impl SoundEffectName) {
-        self.sources.get(&name.id()).map_or_else(
-            || Err(eprintln!("Audio source not found for name.")),
-            |sound_source| {
-                match sound_source {
-                    SoundSource::BufferedFile(source) => {
-                        self.stream_handle
-                            .play_raw(source.clone().convert_samples());
-                    }
-                    SoundSource::SfxrBuffer(source) => {
-                        self.stream_handle
-                            .play_raw(source.clone().convert_samples());
-                    }
-                }
-                Ok(())
-            },
-        );
+        if let Some(sound_source) = self.sources.get(&name.id()) {
+            let result = match sound_source {
+                SoundSource::BufferedFile(source) => self
+                    .stream_handle
+                    .play_raw(source.clone().convert_samples()),
+                SoundSource::SfxrBuffer(source) => self
+                    .stream_handle
+                    .play_raw(source.clone().convert_samples()),
+            };
+
+            if let Err(e) = result {
+                eprintln!("Error playing sound: {e}");
+            }
+        } else {
+            eprintln!("No source loaded for given sound effect name.");
+        }
     }
 }
 
@@ -218,13 +200,12 @@ pub fn scan_usable_devices_by_sound() {
     println!("\n\nScanning for usable devices, listen for sound. Watch for errors.",);
     println!("NB: These are *ALSA* device names as provided by `cpal`.\n",);
     for device in output_devices {
-        // todo use hold in memory instead (faster than file i/o)
+        // todo use hold in memory instead (faster than file i/o) ? what if file mutates?
         let file =
             BufReader::new(File::open("/home/kenny/projects/aion/aion/assets/jump.wav").unwrap());
         let my_source = Decoder::new(file).unwrap();
 
-        let name = device.name().unwrap();
-        println!("{}", name);
+        // let name = device.name().unwrap();
 
         match OutputStream::try_from_device(&device) {
             Ok((_stream, stream_handle)) => {
