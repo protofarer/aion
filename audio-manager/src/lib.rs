@@ -144,19 +144,16 @@ impl SoundManager {
         name: impl SoundEffectName,
         file_name: &str,
     ) -> Result<(), anyhow::Error> {
-        let home_key = if cfg!(target_os = "windows") {
-            "USERPROFILE"
-        } else {
-            "HOME"
-        };
-        let home_dir = match std::env::var(home_key) {
-            Ok(dir) => dir,
-            Err(e) => return Err(anyhow::anyhow!("Couldnt determine home directory. {}", e)),
-        };
+        let mut base_path = std::env::current_exe()?;
 
-        let project_root = std::path::PathBuf::from(home_dir).join("projects/aion/aion/assets/");
+        if cfg!(debug_assertions) {
+            (0..3).for_each(|_i| {
+                base_path.pop();
+            });
+        }
 
-        let file_path = project_root.join(file_name);
+        let file_path = base_path.join("assets").join(file_name);
+
         let file = File::open(file_path.clone())
             .with_context(|| format!("Missing file: {:?}", file_path.to_str().unwrap_or("")))?;
 
