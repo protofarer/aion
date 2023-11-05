@@ -1,6 +1,6 @@
 #[allow(warnings)]
 use anyhow::{anyhow, Context, Result};
-use audio_manager::SoundManager;
+use audio_manager::{AudioPlayback, SilentAudioPlayback, SoundManager};
 use hecs::{PreparedQuery, With, Without, World};
 use log::info;
 use rand::prelude::*;
@@ -94,7 +94,7 @@ pub struct Game {
     pub loop_controller: RunController,
     pub input: WinitInputHelper,
     pub world: World,
-    pub sound_manager: SoundManager,
+    pub sound_manager: Box<dyn AudioPlayback>,
 }
 
 impl GetRunState for Game {
@@ -107,7 +107,14 @@ impl Game {
     pub fn new() -> Result<Self, anyhow::Error> {
         dev!("INIT start");
 
-        let mut sound_manager = SoundManager::new().map_err(|e| anyhow!("{}", e))?;
+        let mut sound_manager: Box<dyn AudioPlayback> = match SoundManager::new() {
+            Ok(sm) => Box::new(sm),
+            Err(e) => {
+                eprintln!("{e}");
+                eprintln!("Audio output device could not be opened, running without sound.");
+                Box::new(SilentAudioPlayback {})
+            }
+        };
 
         dev!("INIT fin");
 
@@ -122,7 +129,7 @@ impl Game {
     pub fn setup(&mut self) {
         dev!("SETUP start");
 
-        if let Err(e) = load_essential_sound_effects(&mut self.sound_manager) {
+        if let Err(e) = load_essential_sound_effects(&mut *self.sound_manager) {
             eprintln!("{e}");
         }
 
@@ -160,7 +167,7 @@ impl Game {
         system_collision_detection(&mut self.world);
         system_collision_resolution(&mut self.world);
         system_physical_damage_resolution(&mut self.world);
-        system_sound_effects(&mut self.world, &self.sound_manager);
+        system_sound_effects(&mut self.world, &mut *self.sound_manager);
     }
 
     pub fn render(&mut self, pixels: &mut Pixels, dbg_ctx: &DebugContext, rdt: Dt) {
@@ -187,6 +194,11 @@ impl Game {
                 draw_collision_circle(frame, transform, collision_circle);
             }
         }
+    }
+    pub fn restart(&mut self) {
+        self.world.clear();
+        let ship = self.world.spawn(HumanShip::new());
+        spawn_scenario_shootingallery(&mut self.world);
     }
 }
 

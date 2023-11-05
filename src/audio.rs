@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use audio_manager::{SoundEffectName, SoundManager};
+use audio_manager::{AudioPlayback, SoundEffectName, SoundManager};
 use sfxr::WaveType;
 
 #[derive(Copy, Clone, Eq, PartialEq, Hash)]
@@ -34,19 +34,19 @@ impl SoundEffectName for SoundEffectNames {
     }
 }
 
-pub fn load_essential_sound_effects(sm: &mut SoundManager) -> Result<(), anyhow::Error> {
-    sm.load_source_from_assets(SoundEffectNames::TinyShot, "tiny_shot.wav")?;
-    sm.load_source_from_assets(SoundEffectNames::Scratch, "scratch.wav")?;
-    sm.load_source_from_assets(SoundEffectNames::PhysicalDeath, "physical_death.wav")?;
-    sm.load_source_from_assets(SoundEffectNames::PhysicalHarm, "physical_harm.wav")?;
+pub fn load_essential_sound_effects(sm: &mut dyn AudioPlayback) -> Result<(), anyhow::Error> {
+    sm.load_source_from_assets(&SoundEffectNames::TinyShot, "tiny_shot.wav")?;
+    sm.load_source_from_assets(&SoundEffectNames::Scratch, "scratch.wav")?;
+    sm.load_source_from_assets(&SoundEffectNames::PhysicalDeath, "physical_death.wav")?;
+    sm.load_source_from_assets(&SoundEffectNames::PhysicalHarm, "physical_harm.wav")?;
     sm.load_source_from_assets(
-        SoundEffectNames::PlayerPhysicalDeath,
+        &SoundEffectNames::PlayerPhysicalDeath,
         "player_physical_death.wav",
     )?;
 
-    sm.load_source_from_sfxr_sample(SoundEffectNames::Laser, Laser::default());
-    sm.load_source_from_sfxr_sample(SoundEffectNames::Photon, Photon::default());
-    sm.play(SoundEffectNames::Photon);
+    sm.load_source_from_sfxr_sample(&SoundEffectNames::Laser, Laser::default());
+    sm.load_source_from_sfxr_sample(&SoundEffectNames::Photon, Photon::default());
+    sm.play(&SoundEffectNames::Photon);
     Ok(())
 }
 

@@ -7,7 +7,7 @@ use crate::gfx::draw::draw_arcs;
 use crate::gfx::pixel::{RED, WHITE};
 use crate::util::time::Dt;
 use crate::{components::*, dev, LOGICAL_WINDOW_HEIGHT, LOGICAL_WINDOW_WIDTH};
-use audio_manager::SoundManager;
+use audio_manager::{AudioPlayback, SoundManager};
 use hecs::{Entity, Query, QueryBorrow, With, Without, World};
 use nalgebra_glm::Vec2;
 use winit::event::VirtualKeyCode;
@@ -576,12 +576,12 @@ pub fn system_animation_lifecycle(world: &mut World, dt: Dt) {
     }
 }
 
-pub fn system_sound_effects(world: &mut World, sm: &SoundManager) {
+pub fn system_sound_effects(world: &mut World, sm: &mut dyn AudioPlayback) {
     let mut sound_events_to_despawn = vec![];
 
     // Query and Play
     for (ent, (sfx)) in world.query_mut::<(&SoundEffectEvent)>() {
-        sm.play(sfx.name);
+        sm.play(&sfx.name);
         sound_events_to_despawn.push(ent);
     }
 

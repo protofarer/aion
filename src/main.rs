@@ -65,6 +65,10 @@ fn process_dbg_keys(game: &mut Game, dbg_ctx: &mut DebugContext) {
     if game.input.key_pressed(VirtualKeyCode::Key1) {
         dbg_ctx.is_drawing_collisionareas = !dbg_ctx.is_drawing_collisionareas;
     }
+
+    if game.input.key_pressed(VirtualKeyCode::R) {
+        game.restart();
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -176,8 +180,6 @@ fn main() {
         Rc::clone(&render_ctx.pixels),
         Rc::clone(&render_ctx.framework),
     );
-
-    let mut dbg_ctx = DebugContext::new();
 
     let dbg_ctx = Rc::new(RefCell::new(DebugContext::new()));
     let dbg_ctx_render = Rc::new(dbg_ctx.borrow().clone());

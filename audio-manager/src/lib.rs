@@ -120,10 +120,26 @@ impl SoundManager {
             sources: HashMap::new(),
         })
     }
+}
 
-    pub fn load_source_from_sfxr_sample(
+pub trait AudioPlayback {
+    fn play(&self, name: &dyn SoundEffectName);
+    fn load_source_from_sfxr_sample(
         &mut self,
-        name: impl SoundEffectName,
+        name: &dyn SoundEffectName,
+        sample: Sample,
+    ) -> Result<(), anyhow::Error>;
+    fn load_source_from_assets(
+        &mut self,
+        name: &dyn SoundEffectName,
+        file_name: &str,
+    ) -> Result<(), anyhow::Error>;
+}
+
+impl AudioPlayback for SoundManager {
+    fn load_source_from_sfxr_sample(
+        &mut self,
+        name: &dyn SoundEffectName,
         sample: Sample,
     ) -> Result<(), anyhow::Error> {
         let mut generator = sfxr::Generator::new(sample);
@@ -139,9 +155,9 @@ impl SoundManager {
         }
     }
 
-    pub fn load_source_from_assets(
+    fn load_source_from_assets(
         &mut self,
-        name: impl SoundEffectName,
+        name: &dyn SoundEffectName,
         file_name: &str,
     ) -> Result<(), anyhow::Error> {
         let mut base_path = std::env::current_exe()?;
@@ -150,6 +166,8 @@ impl SoundManager {
             (0..3).for_each(|_i| {
                 base_path.pop();
             });
+        } else {
+            base_path.pop();
         }
 
         let file_path = base_path.join("assets").join(file_name);
@@ -168,7 +186,7 @@ impl SoundManager {
         Ok(())
     }
 
-    pub fn play(&self, name: impl SoundEffectName) {
+    fn play(&self, name: &dyn SoundEffectName) {
         if let Some(sound_source) = self.sources.get(&name.id()) {
             let result = match sound_source {
                 SoundSource::BufferedFile(source) => self
@@ -222,5 +240,29 @@ pub fn scan_usable_devices_by_sound() {
             }
         };
         println!("---------------------------------------");
+    }
+}
+
+pub struct SilentAudioPlayback;
+impl AudioPlayback for SilentAudioPlayback {
+    #[allow(unused_variables)]
+    fn play(&self, name: &dyn SoundEffectName) {}
+
+    #[allow(unused_variables)]
+    fn load_source_from_sfxr_sample(
+        &mut self,
+        name: &dyn SoundEffectName,
+        sample: Sample,
+    ) -> Result<(), anyhow::Error> {
+        Ok(())
+    }
+
+    #[allow(unused_variables)]
+    fn load_source_from_assets(
+        &mut self,
+        name: &dyn SoundEffectName,
+        file_name: &str,
+    ) -> Result<(), anyhow::Error> {
+        Ok(())
     }
 }
